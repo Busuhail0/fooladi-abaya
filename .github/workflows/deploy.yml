@@ -1,0 +1,40 @@
+name: Deploy Fooladi to Cloudflare
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: fooladi-production
+  cancel-in-progress: false
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: production
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      FOOLADI_D1_DATABASE_ID: ${{ vars.FOOLADI_D1_DATABASE_ID }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install build tools
+        run: python -m pip install uv
+      - name: Install Python dependencies
+        run: uv sync
+      - name: Configure database and build assets
+        run: |
+          python scripts/configure_d1.py
+          python scripts/bundle_assets.py
+      - name: Run tests
+        run: uv run pytest -q
+      - name: Validate Worker bundle
+        run: uv run pywrangler deploy --dry-run
+      - name: Apply additive database migrations
+        run: uv run pywrangler d1 migrations apply fooladi-abaya-db --remote
+      - name: Publish
+        run: uv run pywrangler deploy

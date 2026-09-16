@@ -1,0 +1,22 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "fooladi-abaya",
+  "main": "worker.py",
+  "compatibility_date": "2026-09-15",
+  "compatibility_flags": ["python_workers"],
+  "workers_dev": true,
+  "preview_urls": false,
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "fooladi-abaya-db",
+      "database_id": "REPLACE_WITH_CREATED_D1_DATABASE_ID",
+      "migrations_dir": "migrations"
+    }
+  ],
+  "r2_buckets": [
+    {"binding": "PHOTOS", "bucket_name": "fooladi-abaya-models"}
+  ],
+  "vars": {"MAINTENANCE": "0"},
+  "observability": {"enabled": false}
+}
