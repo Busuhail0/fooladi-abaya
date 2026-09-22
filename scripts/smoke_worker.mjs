@@ -20,9 +20,11 @@ const mf = new Miniflare(convertV4MiniflareOptions({modules,modulesRoot:root,
   d1Databases:['DB'],r2Buckets:['PHOTOS'],cf:false}));
 let cookie='';
 async function request(url,data) {
+  const bodyText=data?new URLSearchParams(data).toString():undefined;
   const r=await mf.dispatchFetch('https://local.test'+url,{method:data?'POST':'GET',
-    headers:{cookie,...(data?{'content-type':'application/x-www-form-urlencoded'}:{})},
-    ...(data?{body:new URLSearchParams(data).toString()}:{}),redirect:'manual'});
+    headers:{cookie,...(data?{'content-type':'application/x-www-form-urlencoded',
+      'content-length':String(Buffer.byteLength(bodyText))}:{})},
+    ...(data?{body:bodyText}:{}),redirect:'manual'});
   const set=r.headers.get('set-cookie');if(set)cookie=set.split(';',1)[0];
   const body=await r.text();
   console.log(JSON.stringify({path:url,method:data?'POST':'GET',status:r.status,location:r.headers.get('location')}));
