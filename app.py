@@ -246,6 +246,7 @@ def create_app(data_dir=None, test_config=None, cloud=False):
 
     @app.errorhandler(CloudBackendError)
     def cloud_failure(_error):
+        app.logger.exception('Cloud storage operation failed')
         # Avoid template context (it itself needs the database), and do not expose SQL.
         return Response('Storage temporarily unavailable / تعذر الوصول إلى التخزين مؤقتاً',503,content_type='text/plain; charset=utf-8')
 
