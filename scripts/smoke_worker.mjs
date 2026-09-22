@@ -22,7 +22,7 @@ let cookie='';
 async function request(url,data) {
   const r=await mf.dispatchFetch('https://local.test'+url,{method:data?'POST':'GET',
     headers:{cookie,...(data?{'content-type':'application/x-www-form-urlencoded'}:{})},
-    ...(data?{body:new URLSearchParams(data)}:{}),redirect:'manual'});
+    ...(data?{body:new URLSearchParams(data).toString()}:{}),redirect:'manual'});
   const set=r.headers.get('set-cookie');if(set)cookie=set.split(';',1)[0];
   const body=await r.text();
   console.log(JSON.stringify({path:url,method:data?'POST':'GET',status:r.status,location:r.headers.get('location')}));
@@ -49,7 +49,7 @@ print(json.dumps(statements))
   if(form.status!==200)throw new Error('Setup page failed: '+form.body.slice(0,300));
   const saved=await request('/setup',{csrf:csrf(form.body),setup_token:'t'.repeat(64),
     username:'testowner',password:'TestOnlyPassword123!',confirm:'TestOnlyPassword123!',shop_name:'Test shop'});
-  if(saved.status!==302)throw new Error('Setup failed: '+saved.body.slice(0,300));
+  if(saved.status!==302)throw new Error('Setup failed: '+saved.body.replace(/<[^>]+>/g,' ').replace(/\s+/g,' ').slice(-1800));
   const dashboard=await request('/');
   if(dashboard.status!==200)throw new Error('Dashboard failed');
   await request('/logout',{csrf:csrf(dashboard.body)});
