@@ -1,7 +1,7 @@
 name: Validate Fooladi
 on:
   push:
-    branches: [main]
+    branches: [main, fix/worker-password-runtime]
   pull_request:
 permissions:
   contents: read
@@ -16,7 +16,7 @@ jobs:
       - run: python -m pip install -r requirements-local.txt 'pytest>=8,<10'
       - run: python scripts/bundle_assets.py
       - run: python -m pytest -q
-      - run: python -m compileall -q app.py ready_stock.py cloud_storage.py worker.py bundled_assets.py
+      - run: python -m compileall -q app.py ready_stock.py cloud_storage.py password_security.py worker.py bundled_assets.py
   worker-build:
     runs-on: ubuntu-latest
     timeout-minutes: 15
@@ -27,7 +27,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: '22'
+          node-version: '24'
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
@@ -35,5 +35,8 @@ jobs:
       - run: uv sync
       - run: python scripts/configure_d1.py
       - run: python scripts/bundle_assets.py
+      - run: npm install --no-save --package-lock=false wrangler@4.136.3
       - name: Validate Worker without deploying
         run: uv run pywrangler deploy --dry-run
+      - name: Exercise first account and login in the Workers runtime
+        run: node scripts/smoke_worker.mjs

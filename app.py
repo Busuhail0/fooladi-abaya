@@ -17,7 +17,7 @@ from zoneinfo import ZoneInfo
 
 from flask import Flask, Response, abort, flash, g, jsonify, redirect, render_template, request, send_file, send_from_directory, session, url_for
 from PIL import Image, ImageOps, UnidentifiedImageError
-from werkzeug.security import check_password_hash, generate_password_hash
+from password_security import CLOUD_PASSWORD_METHOD, check_password_hash, generate_password_hash
 from cloud_storage import CloudBackendError, ConcurrentWrite, D1Connection, R2Photos, WorkerSessionInterface
 from ready_stock import READY_SCHEMA, register_ready_routes
 
@@ -280,7 +280,7 @@ def create_app(data_dir=None, test_config=None, cloud=False):
                 if setting('password_hash'):
                     abort(409)
                 put_setting('username',username)
-                put_setting('password_hash',generate_password_hash(password,method='pbkdf2:sha256:600000' if cloud else 'scrypt'))
+                put_setting('password_hash',generate_password_hash(password,method=CLOUD_PASSWORD_METHOD if cloud else 'scrypt'))
                 put_setting('auth_version',uuid.uuid4().hex)
                 put_setting('shop_name',text_input(request.form,'shop_name',120,True))
             session['user']=username
@@ -594,7 +594,7 @@ def create_app(data_dir=None, test_config=None, cloud=False):
         if len(new)<10 or new!=request.form.get('confirm'):raise ValidationError('استخدم 10 أحرف على الأقل وتأكيداً مطابقاً. / Use 10+ characters and matching confirmation.')
         with transaction():
             if not check_password_hash(setting('password_hash'),request.form.get('current','')):raise ValidationError('كلمة المرور الحالية غير صحيحة. / Incorrect current password.')
-            put_setting('password_hash',generate_password_hash(new,method='pbkdf2:sha256:600000' if cloud else 'scrypt'))
+            put_setting('password_hash',generate_password_hash(new,method=CLOUD_PASSWORD_METHOD if cloud else 'scrypt'))
             put_setting('auth_version',uuid.uuid4().hex)
         session.clear()
         return redirect(url_for('login'))
