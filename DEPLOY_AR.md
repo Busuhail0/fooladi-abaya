@@ -1,6 +1,6 @@
 # نشر فولادي على Cloudflare وربطه بـGitHub
 
-**لم يصدر رابط تشغيل معتمد بعد.** هذه النسخة تفصل طلبات التفصيل عن مبيعات الجاهز، وتحتفظ بلغة بايثون. تشغيلها يحتاج مستودع GitHub وحساب Cloudflare يمكنه إنشاء Worker وقاعدة D1 وحاوية R2 خاصة. نجح فحص بناء النسخة السابقة في GitHub Actions؛ افحص نتيجة البناء للنسخة الحالية أيضاً.
+**لم يصدر رابط تشغيل معتمد بعد.** هذه النسخة تفصل طلبات التفصيل عن مبيعات الجاهز، وتحتفظ بلغة بايثون. نجحت اختبارات النسخة الثانية وفحص بناء Workers في GitHub Actions. أنشأ المالك قاعدة D1 باسم `fooladi-abaya-db` يوم 22 سبتمبر 2026، وأُضيف معرّفها إلى إعدادات البرنامج. ما زال يلزم إعداد R2 وأسرار التشغيل والنشر والتجربة الفعلية.
 
 ## ١. مستودع GitHub
 
@@ -22,12 +22,14 @@ python scripts/bundle_assets.py
 
 ## ٣. إنشاء قاعدة البيانات والصور
 
+قاعدة هذا المشروع أُنشئت بالفعل، ومعرّفها `2e33d34f-d6bf-4377-b657-faa356d1ce5a` مسجل في `wrangler.jsonc`؛ لا تُعد إنشاءها. أوامر الإنشاء التالية مرجع عند تجهيز حساب جديد، وحاوية الصور لا تزال تحتاج الإنشاء في الحساب الحالي:
+
 ```bash
 uv run pywrangler d1 create fooladi-abaya-db
 uv run pywrangler r2 bucket create fooladi-abaya-models
 ```
 
-انسخ `database_id` الفعلي الذي تعيده Cloudflare إلى ملف `wrangler.jsonc` مكان `REPLACE_WITH_CREATED_D1_DATABASE_ID`. لا تعدل أسماء الربط `DB` و`PHOTOS`.
+عند استخدام قاعدة أخرى، انسخ `database_id` الفعلي الذي تعيده Cloudflare إلى ملف `wrangler.jsonc`. لا تعدل أسماء الربط `DB` و`PHOTOS`.
 
 بديل تعديل الملف: عيّن متغير البيئة `FOOLADI_D1_DATABASE_ID` للقيمة الفعلية ثم شغّل:
 
@@ -83,7 +85,7 @@ uv run pywrangler deploy
 |---|---|---|
 | Secret | `CLOUDFLARE_API_TOKEN` | رمز نشر محدود بصلاحيات هذا المشروع |
 | Secret | `CLOUDFLARE_ACCOUNT_ID` | معرّف حساب Cloudflare |
-| Variable | `FOOLADI_D1_DATABASE_ID` | المعرّف الفعلي لقاعدة D1 |
+| Variable اختياري | `FOOLADI_D1_DATABASE_ID` | لتجاوز المعرّف المحفوظ في `wrangler.jsonc` فقط؛ تركه فارغاً يستخدم المعرّف المحفوظ |
 
 يبقى `SESSION_SECRET` و`SETUP_TOKEN` في Workers secrets؛ لا يحتاج سير العمل إلى كشفهما.
 
@@ -138,4 +140,4 @@ python scripts/prepare_restore.py path/to/fooladi-cloud-backup.zip
 - مستودع المشروع هو `Busuhail0/fooladi-abaya`؛ تحقق من إعداد الخصوصية المطلوب للحساب.
 - استكمال فحص بناء Workers والتجربة الفعلية قبل اعتماد رابط التشغيل.
 
-رفع الكود إلى GitHub لا ينشر البرنامج تلقائياً. لم تُنشأ موارد Cloudflare ولم يصدر رابط تشغيل من هذا المشروع حتى الآن.
+رفع الكود إلى GitHub لا ينشر البرنامج تلقائياً. أُنشئت قاعدة D1 وفق صورة المالك، وكانت بلا جداول عند الإنشاء. ما زال تطبيق الترقيات وإعداد بقية الموارد والنشر مطلوباً؛ لم يصدر رابط تشغيل من هذا المشروع حتى الآن.

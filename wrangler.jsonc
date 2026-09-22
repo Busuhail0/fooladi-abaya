@@ -10,7 +10,7 @@
     {
       "binding": "DB",
       "database_name": "fooladi-abaya-db",
-      "database_id": "REPLACE_WITH_CREATED_D1_DATABASE_ID",
+      "database_id": "2e33d34f-d6bf-4377-b657-faa356d1ce5a",
       "migrations_dir": "migrations"
     }
   ],

@@ -6,7 +6,7 @@ from pathlib import Path
 
 path=Path(__file__).resolve().parents[1]/'wrangler.jsonc'
 config=json.loads(path.read_text())
-identifier=os.environ.get('FOOLADI_D1_DATABASE_ID',config['d1_databases'][0]['database_id'])
+identifier=os.environ.get('FOOLADI_D1_DATABASE_ID','').strip() or config['d1_databases'][0]['database_id']
 try:uuid.UUID(identifier)
 except ValueError:raise SystemExit('Set FOOLADI_D1_DATABASE_ID to the UUID returned by Cloudflare D1 create.')
 config['d1_databases'][0]['database_id']=identifier
