@@ -45,6 +45,13 @@ def js_array(values):
     from pyodide.ffi import to_js
     return to_js(values)
 
+def binding_array(values):
+    # Prepared statements are SDK binding wrappers, not raw JsProxy objects.
+    # Generic to_js creates borrowed Python proxies that expire before D1's
+    # asynchronous batch finishes. The SDK converter unwraps the JS bindings.
+    from workers.rpc import python_to_rpc
+    return python_to_rpc(values)
+
 def translate(error):
     detail=str(error)
     if 'cloud_revision_guard' in detail:
@@ -72,7 +79,7 @@ class D1Connection:
     def __init__(self,binding,sync=None,array=None):
         self.binding=binding.withSession('first-primary')
         self.sync=sync or bridge
-        self.array=array or js_array
+        self.array=array or binding_array
         self.null=None if sync is not None else JS_NULL
         self.pending=None
         self.revision=None
