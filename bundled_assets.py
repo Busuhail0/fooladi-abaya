@@ -36,13 +36,17 @@ TEMPLATES = {'auth.html': "{% extends 'base.html' %}{% from 'macros.html' import
               '}}</small></span></a>\n'
               '  <div class="nav-caption">{{ t(\'مساحة العمل\',\'WORKSPACE\') }}</div>\n'
               '  <nav>\n'
-              "  {% for endpoint,icon,ar,en in [('dashboard','◈','نظرة عامة','Overview'),('orders','▤','الطلبات "
-              "والفواتير','Orders & invoices'),('workshop','✂','المشغل','Workshop'),('customers','♙','العملاء "
-              "والمقاسات','Customers & sizes'),('models','◇','كتالوج الموديلات','Model "
-              "catalogue'),('settings','⚙','الإعدادات والنسخ','Settings & backup')] %}\n"
-              '  <a href="{{ url_for(endpoint) }}" class="{{ \'active\' if request.endpoint==endpoint or '
-              'endpoint==\'orders\' and request.endpoint in (\'new_order\',\'order_detail\') else \'\' }}"><span '
-              'class="nav-icon">{{ icon }}</span>{{ t(ar,en) }}</a>\n'
+              '  <a href="{{ url_for(\'orders\',kind=\'custom\') }}" class="{{ \'active\' if '
+              'request.args.get(\'kind\')==\'custom\' or request.endpoint==\'new_order\' else \'\' }}"><span '
+              'class="nav-icon">✂</span>{{ t(\'طلبات التفصيل\',\'Tailoring orders\') }}</a>\n'
+              "  {% for endpoint,icon,ar,en in [('dashboard','◈','نظرة عامة','Overview'),('ready_stock','◇','العبايات "
+              "الجاهزة','Ready-to-wear'),('orders','▤','كل الطلبات والفواتير','All orders & "
+              "invoices'),('workshop','✂','المشغل','Workshop'),('customers','♙','العملاء والمقاسات','Customers & "
+              "sizes'),('models','◇','كتالوج الموديلات','Model catalogue'),('settings','⚙','الإعدادات "
+              "والنسخ','Settings & backup')] %}\n"
+              '  <a href="{{ url_for(endpoint) }}" class="{{ \'active\' if request.endpoint==endpoint and not '
+              "request.args.get('kind') or endpoint=='ready_stock' and request.endpoint=='ready_detail' else '' "
+              '}}"><span class="nav-icon">{{ icon }}</span>{{ t(ar,en) }}</a>\n'
               '  {% endfor %}\n'
               '  </nav>\n'
               '  <div class="sidebar-bottom"><div class="status-dot"></div><span>{{ t(\'المحل والمشغل في مكان '
@@ -104,28 +108,35 @@ TEMPLATES = {'auth.html': "{% extends 'base.html' %}{% from 'macros.html' import
                    "t('نظرة على العمل الجاري والتسليمات والمبالغ المستحقة.','A clear view of production, handovers and "
                    'outstanding payments.\') }}</p></div><a class="btn" href="{{ url_for(\'new_order\') }}">＋ {{ '
                    "t('طلب جديد','New order') }}</a></div>\n"
+                   '<div class="workspace-paths"><a class="panel padded" href="{{ url_for(\'orders\',kind=\'custom\') '
+                   '}}"><span class="eyebrow">ATELIER</span><h2>{{ t(\'متابعة طلبات التفصيل\',\'Tailoring orders\') '
+                   '}}</h2><p class="muted">{{ t(\'العميل والمقاسات ومراحل المشغل حتى التسليم\',\'Customer, '
+                   'measurements and workshop stages through handover\') }}</p></a><a class="panel padded" href="{{ '
+                   'url_for(\'ready_stock\') }}"><span class="eyebrow">READY TO WEAR</span><h2>{{ t(\'متابعة بيع '
+                   'العبايات الجاهزة\',\'Ready-to-wear sales\') }}</h2><p class="muted">{{ t(\'الموديل والصورة والعرض '
+                   "والحجز والبيع والإرجاع','Model, photo, display, reservations, sales and returns') "
+                   '}}</p></a></div>\n'
                    '<div class="stats"><a href="{{ url_for(\'orders\') }}" class="stat dark"><span>{{ t(\'طلبات قيد '
                    "المتابعة','Active orders') }}</span><strong>{{ stats.active }}</strong><small>{{ t('من الاستلام "
                    'حتى التسليم\',\'From intake to handover\') }}</small></a><a href="{{ '
                    'url_for(\'orders\',status=\'ready\') }}" class="stat"><span>{{ t(\'جاهزة للتسليم\',\'Ready for '
-                   "handover') }}</span><strong>{{ stats.ready }}</strong><small>{{ t('مكتملة في المشغل','Completed in "
-                   'the atelier\') }}</small></a><a href="{{ url_for(\'orders\',status=\'late\') }}" '
-                   'class="stat"><span>{{ t(\'طلبات متأخرة\',\'Overdue orders\') }}</span><strong class="{{ '
-                   '\'late-text\' if stats.late else \'\' }}">{{ stats.late }}</strong><small>{{ t(\'تجاوزت الموعد '
-                   'المحدد\',\'Past the promised date\') }}</small></a><a href="{{ '
-                   'url_for(\'orders\',payment=\'unpaid\') }}" class="stat"><span>{{ t(\'مبالغ متبقية\',\'Outstanding '
-                   'balance\') }}</span><strong class="amount">{{ stats.balance|money }}</strong><small>{{ t(\'درهم '
-                   "إماراتي','AED') }}</small></a></div>\n"
-                   '{% if stats.refund_due %}<div class="notice">{{ t(\'مبالغ مستحقة للاسترداد على طلبات '
-                   "ملغاة:','Refunds due on cancelled orders:') }} <b>{{ stats.refund_due|money }} AED</b></div>{% "
-                   'endif %}\n'
+                   "handover') }}</span><strong>{{ stats.ready }}</strong><small>{{ t('بانتظار الاستلام أو "
+                   'التوصيل\',\'Awaiting pickup or courier\') }}</small></a><a href="{{ '
+                   'url_for(\'orders\',status=\'late\') }}" class="stat"><span>{{ t(\'طلبات متأخرة\',\'Overdue '
+                   'orders\') }}</span><strong class="{{ \'late-text\' if stats.late else \'\' }}">{{ stats.late '
+                   "}}</strong><small>{{ t('تجاوزت الموعد المحدد','Past the promised date') }}</small></a><a "
+                   'href="{{ url_for(\'orders\',payment=\'unpaid\') }}" class="stat"><span>{{ t(\'مبالغ '
+                   'متبقية\',\'Outstanding balance\') }}</span><strong class="amount">{{ stats.balance|money '
+                   "}}</strong><small>{{ t('درهم إماراتي','AED') }}</small></a></div>\n"
+                   '{% if stats.refund_due %}<div class="notice">{{ t(\'مبالغ مستحقة للرد للمتعاملين:\',\'Customer '
+                   "refunds due:') }} <b>{{ stats.refund_due|money }} AED</b></div>{% endif %}\n"
                    '<section class="panel workflow-panel"><div class="section-heading"><h2>{{ t(\'حركة '
                    'المشغل\',\'Atelier flow\') }}</h2><a class="text-link" href="{{ url_for(\'workshop\') }}">{{ '
                    't(\'فتح لوحة المشغل ←\',\'Open atelier →\') }}</a></div><div class="flow">{% for code,ar,en in '
-                   'stages %}<a href="{{ url_for(\'orders\',status=code) }}"><span class="step-index">0{{ loop.index '
-                   '}}</span><strong>{{ counts[code] }}</strong><span>{{ t(ar,en) }}</span></a>{% endfor %}</div><p '
-                   'class="caption">{{ t(\'عدد الطلبات بحسب أقل مرحلة مكتملة ضمن عبايات الطلب.\',\'Orders grouped by '
-                   "the earliest item stage within each order.') }}</p></section>\n"
+                   'stages %}<a href="{{ url_for(\'orders\',kind=\'custom\',status=code) }}"><span '
+                   'class="step-index">0{{ loop.index }}</span><strong>{{ counts[code] }}</strong><span>{{ t(ar,en) '
+                   '}}</span></a>{% endfor %}</div><p class="caption">{{ t(\'عدد الطلبات بحسب أقل مرحلة مكتملة ضمن '
+                   "عبايات الطلب.','Orders grouped by the earliest item stage within each order.') }}</p></section>\n"
                    '<section class="panel"><div class="section-heading"><div><h2>{{ t(\'التسليمات القادمة\',\'Upcoming '
                    'handovers\') }}</h2><p class="muted">{{ t(\'الأقرب موعداً أولاً\',\'Earliest promised dates '
                    'first\') }}</p></div><a class="text-link" href="{{ url_for(\'orders\') }}">{{ t(\'جميع الطلبات '
@@ -150,13 +161,16 @@ TEMPLATES = {'auth.html': "{% extends 'base.html' %}{% from 'macros.html' import
                  '}}</p></div><div><span class="eyebrow">{{ \'WORK TICKET\' if workshop else \'SALES INVOICE\' '
                  "}}</span><h1>{{ t('بطاقة عمل المشغل','Atelier work ticket') if workshop else t('فاتورة بيع','Sales "
                  'invoice\') }}</h1><strong class="bidi">{{ order.id|order_no }}</strong><p>{{ order.created_at|date '
-                 '}}</p></div></header>{% if order.cancelled %}<div class="notice error">{{ t(\'ملغي\',\'CANCELLED\') '
-                 '}} — {{ order.cancel_reason }}</div>{% endif %}<div class="invoice-parties"><div><span '
-                 'class="eyebrow">{{ t(\'العميل\',\'CUSTOMER\') }}</span><h3>{{ order.customer_name }}</h3><p '
-                 'class="bidi">{{ order.customer_phone }}</p><p>{{ order.customer_address }}</p></div><div><span '
-                 'class="eyebrow">{{ t(\'التسليم\',\'HANDOVER\') }}</span><h3>{{ label(order.mode) }}</h3><p>{{ '
-                 "t('الموعد:','Due:') }} {{ order.due_date }}</p><p>{{ order.delivery_address }}</p><p>{{ "
-                 'order.courier }} {{ order.tracking }}</p></div></div>\n'
+                 '}}</p></div></header>{% if order.cancelled %}<div class="notice error">{{ t(\'إرجاع كامل\',\'FULL '
+                 "RETURN') if order.sale_state=='returned' else t('ملغي','CANCELLED') }} — {{ order.cancel_reason "
+                 "}}</div>{% endif %}{% if order.sale_state %}<p>{{ t('حالة البيع','Sale state') }}: <strong>{{ "
+                 "label(order.sale_state) }}</strong> · {{ t('تاريخ العرض','Display date') }}: {{ "
+                 'order.sale_display_date }}</p>{% endif %}<div class="invoice-parties"><div><span class="eyebrow">{{ '
+                 't(\'العميل\',\'CUSTOMER\') }}</span><h3>{{ order.customer_name }}</h3><p class="bidi">{{ '
+                 'order.customer_phone }}</p><p>{{ order.customer_address }}</p></div><div><span class="eyebrow">{{ '
+                 "t('التسليم','HANDOVER') }}</span><h3>{{ label(order.mode) }}</h3><p>{{ t('الموعد:','Due:') }} {{ "
+                 'order.due_date }}</p><p>{{ order.delivery_address }}</p><p>{{ order.courier }} {{ order.tracking '
+                 '}}</p></div></div>\n'
                  '<table class="invoice-table"><thead><tr><th>{{ t(\'الموديل والوصف\',\'Model & description\') '
                  "}}</th><th>{{ t('الكمية','Qty') }}</th>{% if not workshop %}<th>{{ t('سعر الوحدة','Unit price') "
                  "}}</th><th>{{ t('الإجمالي','Total') }}</th>{% else %}<th>{{ t('الخياط','Tailor') }}</th><th>{{ "
@@ -219,12 +233,13 @@ TEMPLATES = {'auth.html': "{% extends 'base.html' %}{% from 'macros.html' import
                 "item.model_code }} <small>× {{ item.quantity }}</small></span>{% endfor %}{% if o['items']|length>2 "
                 '%}<small>+{{ o[\'items\']|length-2 }}</small>{% endif %}</td><td><span class="bidi">{{ o.due_date '
                 '}}</span>{% if o.overdue %}<small class="late-text block">{{ t(\'متأخر\',\'Overdue\') }}</small>{% '
-                'endif %}</td><td><span class="badge {{ o.status }}">{{ label(o.status) }}</span></td><td>{{ '
-                'label(o.mode) }}</td><td class="number">{{ o.total|money }}</td><td class="number {{ \'late-text\' if '
-                'o.balance>0 else \'green-text\' }}">{{ o.balance|money }}{% if o.refund_due %}<small class="block '
-                'late-text">{{ t(\'استرداد مستحق\',\'Refund due\') }} {{ o.refund_due|money }}</small>{% endif '
-                '%}</td><td><a class="row-arrow" href="{{ url_for(\'order_detail\',oid=o.id) }}">{{ \'←\' if '
-                "lang=='ar' else '→' }}</a></td></tr>\n"
+                'endif %}</td><td><span class="badge {{ o.status }}">{{ label(o.status) }}</span>{% if o.sale_state '
+                '%}<small class="block">{{ label(o.sale_state) }}</small>{% endif %}</td><td>{{ label(o.mode) '
+                '}}</td><td class="number">{{ o.total|money }}</td><td class="number {{ \'late-text\' if o.balance>0 '
+                'else \'green-text\' }}">{{ o.balance|money }}{% if o.refund_due %}<small class="block late-text">{{ '
+                "t('استرداد مستحق','Refund due') }} {{ o.refund_due|money }}</small>{% endif %}</td><td><a "
+                'class="row-arrow" href="{{ url_for(\'order_detail\',oid=o.id) }}">{{ \'←\' if lang==\'ar\' else \'→\' '
+                '}}</a></td></tr>\n'
                 '{% else %}<tr><td colspan="8"><div class="empty"><span>◇</span><strong>{{ t(\'لا توجد طلبات هنا '
                 "بعد','No orders here yet') }}</strong><p>{{ t('ابدأ بإضافة العميل والموديل، ثم أنشئ أول طلب.','Add a "
                 "customer and a model, then create your first order.') }}</p></div></td></tr>{% endfor %}\n"
@@ -269,7 +284,7 @@ TEMPLATES = {'auth.html': "{% extends 'base.html' %}{% from 'macros.html' import
  'new_order.html': "{% extends 'base.html' %}{% from 'macros.html' import token,measurements with context %}{% block "
                    'content %}\n'
                    '<div class="page-heading"><div><a href="{{ url_for(\'orders\') }}" class="text-link">{{ '
-                   "t('الطلبات /','Orders /') }}</a><h1>{{ t('تسجيل طلب جديد','Create a new order') }}</h1><p "
+                   "t('الطلبات /','Orders /') }}</a><h1>{{ t('طلب تفصيل جديد','New tailoring order') }}</h1><p "
                    'class="muted">{{ t(\'كل تفاصيل العباية والعميل والتسليم في خطوة واحدة.\',\'Customer, abaya and '
                    "handover details in one place.') }}</p></div></div>\n"
                    '{% if not customers or not models %}<div class="notice">{{ t(\'قبل إنشاء الطلب، أضف عميلاً '
@@ -333,24 +348,21 @@ TEMPLATES = {'auth.html': "{% extends 'base.html' %}{% from 'macros.html' import
                    '}}</small></span></div><div class="form-grid"><label>{{ t(\'رقم الموديل\',\'Model code\') }} '
                    '*<input name="i__INDEX___code" class="model-input" list="model-codes" required '
                    'placeholder="FL-101" autocomplete="off"><small class="model-result muted" aria-live="polite">{{ '
-                   "t('اكتب الرقم لعرض الصورة','Enter code to show photo') }}</small></label><label>{{ t('نوع "
-                   'الطلب\',\'Order type\') }}<select name="i__INDEX___kind" class="kind-input"><option '
-                   'value="custom">{{ t(\'تفصيل في المشغل\',\'Made to measure\') }}</option><option value="stock">{{ '
-                   "t('بيع جاهز من المحل','Ready to wear') }}</option></select></label><label>{{ "
-                   't(\'الكمية\',\'Quantity\') }}<input type="number" name="i__INDEX___quantity" '
-                   'class="quantity-input" value="1" min="1" max="100" step="1" required></label><label>{{ t(\'سعر '
-                   'العباية / درهم\',\'Unit price / AED\') }}<input type="number" name="i__INDEX___price" '
-                   'class="price-input" step="0.01" min="0" required></label><label>{{ t(\'القماش\',\'Fabric\') '
-                   '}}<input name="i__INDEX___fabric" maxlength="120"></label><label>{{ t(\'اللون\',\'Colour\') '
-                   '}}<input name="i__INDEX___color" maxlength="80"></label></div></div><details '
-                   'class="measure-details" open><summary>{{ t(\'المقاسات وتفاصيل المشغل\',\'Measurements & atelier '
-                   'details\') }}</summary><button type="button" class="text-button copy-measurements">{{ t(\'نسخ '
-                   "مقاسات العميل لهذا البند','Copy customer measurements to this item') }}</button>{{ "
-                   'measurements({},\'i__INDEX___\') }}<div class="form-grid"><label>{{ t(\'الخياط / '
-                   'المسؤول\',\'Tailor / assignee\') }}<input name="i__INDEX___tailor" '
-                   'maxlength="120"></label><label>{{ t(\'ملاحظات التفصيل\',\'Tailoring notes\') }}<textarea '
-                   'name="i__INDEX___notes" rows="2" placeholder="{{ t(\'فتحة أمامية، نوع التطريز، تعديل '
-                   "خاص…','Opening, embroidery, special adjustments…') "
+                   't(\'اكتب الرقم لعرض الصورة\',\'Enter code to show photo\') }}</small></label><input type="hidden" '
+                   'name="i__INDEX___kind" value="custom"><label>{{ t(\'الكمية\',\'Quantity\') }}<input type="number" '
+                   'name="i__INDEX___quantity" class="quantity-input" value="1" min="1" max="100" step="1" '
+                   'required></label><label>{{ t(\'سعر العباية / درهم\',\'Unit price / AED\') }}<input type="number" '
+                   'name="i__INDEX___price" class="price-input" step="0.01" min="0" required></label><label>{{ '
+                   't(\'القماش\',\'Fabric\') }}<input name="i__INDEX___fabric" maxlength="120"></label><label>{{ '
+                   't(\'اللون\',\'Colour\') }}<input name="i__INDEX___color" '
+                   'maxlength="80"></label></div></div><details class="measure-details" open><summary>{{ t(\'المقاسات '
+                   'وتفاصيل المشغل\',\'Measurements & atelier details\') }}</summary><button type="button" '
+                   'class="text-button copy-measurements">{{ t(\'نسخ مقاسات العميل لهذا البند\',\'Copy customer '
+                   "measurements to this item') }}</button>{{ measurements({},'i__INDEX___') }}<div "
+                   'class="form-grid"><label>{{ t(\'الخياط / المسؤول\',\'Tailor / assignee\') }}<input '
+                   'name="i__INDEX___tailor" maxlength="120"></label><label>{{ t(\'ملاحظات التفصيل\',\'Tailoring '
+                   'notes\') }}<textarea name="i__INDEX___notes" rows="2" placeholder="{{ t(\'فتحة أمامية، نوع '
+                   "التطريز، تعديل خاص…','Opening, embroidery, special adjustments…') "
                    '}}"></textarea></label></div></details></article></template>\n'
                    '{% endblock %}\n',
  'order_detail.html': "{% extends 'base.html' %}{% from 'macros.html' import token,measurements with context %}{% "
@@ -359,13 +371,21 @@ TEMPLATES = {'auth.html': "{% extends 'base.html' %}{% from 'macros.html' import
                       '}}</span><h1 class="bidi">{{ order.id|order_no }}</h1><p class="muted">{{ order.customer_name '
                       '}} · <span class="bidi">{{ order.customer_phone }}</span> · {{ order.created_at|date '
                       '}}</p></div><div class="actions"><span class="badge {{ order.status }}">{{ label(order.status) '
-                      '}}</span><a class="btn secondary" target="_blank" href="{{ '
+                      '}}</span>{% if order.has_custom %}<a class="btn secondary" target="_blank" href="{{ '
                       'url_for(\'invoice\',oid=order.id,workshop=1) }}">{{ t(\'بطاقة المشغل\',\'Work ticket\') '
-                      '}}</a><a class="btn" target="_blank" href="{{ url_for(\'invoice\',oid=order.id) }}">{{ t(\'عرض '
-                      "الفاتورة','View invoice') }}</a></div></div>\n"
-                      '{% if order.cancelled %}<div class="notice error">{{ t(\'طلب ملغي:\',\'Cancelled:\') }} {{ '
-                      "order.cancel_reason }}{% if order.refund_due %}<br>{{ t('يجب تسجيل استرداد المبلغ "
-                      "المدفوع:','Record a refund of the paid amount:') }} {{ order.refund_due|money }} AED{% endif "
+                      '}}</a>{% endif %}{% if order.stock_id %}<a class="btn secondary" href="{{ '
+                      'url_for(\'ready_detail\',sid=order.stock_id) }}">{{ t(\'سجل العباية الجاهزة\',\'Ready stock '
+                      'record\') }}</a>{% endif %}<a class="btn" target="_blank" href="{{ '
+                      'url_for(\'invoice\',oid=order.id) }}">{{ t(\'عرض الفاتورة\',\'View invoice\') '
+                      '}}</a></div></div>\n'
+                      '{% if order.cancelled %}<div class="notice error">{{ t(\'إرجاع كامل:\',\'Full return:\') if '
+                      "order.sale_state=='returned' else t('طلب ملغي:','Cancelled:') }} {{ order.cancel_reason }}{% if "
+                      "order.refund_due %}<br>{{ t('يجب تسجيل استرداد المبلغ المدفوع:','Record a refund of the paid "
+                      "amount:') }} {{ order.refund_due|money }} AED{% endif %}</div>{% endif %}\n"
+                      '{% if order.sale_state %}<div class="notice"><strong>{{ t(\'حالة البيع\',\'Sale state\') }}: {{ '
+                      "label(order.sale_state) }}</strong> · {{ t('تاريخ العرض','Display date') }}: {{ "
+                      "order.sale_display_date }}{% if order.sale_state=='reserved' %}<br>{{ t('أكد البيع من سجل "
+                      "القطعة قبل تسليمها.','Confirm the sale from the piece record before handover.') }}{% endif "
                       '%}</div>{% endif %}\n'
                       '<div class="stats compact"><div class="stat"><span>{{ t(\'إجمالي الطلب\',\'Order total\') '
                       '}}</span><strong class="amount">{{ order.total|money }}</strong><small>AED</small></div><div '
@@ -383,27 +403,28 @@ TEMPLATES = {'auth.html': "{% extends 'base.html' %}{% from 'macros.html' import
                       'item.quantity }} · {{ item.price|money }} AED</p></div><span class="badge {{ item.stage }}">{{ '
                       'label(item.stage) }}</span></div><div class="item-detail"><div class="detail-photo">{% if '
                       'item.photo %}<img src="{{ url_for(\'photo\',name=item.photo) }}" alt="{{ item.model_title '
-                      '}}">{% else %}<div class="photo-placeholder">◇</div>{% endif %}</div><div><div '
-                      'class="stage-trail">{% for code,a,e in stages %}<span class="{{ \'current\' if code==item.stage '
-                      'else \'\' }}">{{ t(a,e) }}</span>{% endfor %}</div><p>{{ t(\'الخياط\',\'Tailor\') }}: '
-                      "<strong>{{ item.tailor or '—' }}</strong> · {{ t('القماش','Fabric') }}: {{ item.fabric or '—' "
-                      '}} · {{ t(\'اللون\',\'Colour\') }}: {{ item.color or \'—\' }}</p><p class="muted">{{ item.notes '
-                      "}}</p></div></div><details><summary>{{ t('المقاسات وتحديث المرحلة','Measurements & production "
-                      'update\') }}</summary><form method="post" action="{{ '
-                      'url_for(\'update_item\',oid=order.id,iid=item.id) }}">{{ token() }}<fieldset {{ \'disabled\' if '
-                      "order.cancelled or order.shipping_status!='pending' else '' }}><div "
-                      'class="form-grid"><label>{{ t(\'مرحلة العباية\',\'Production stage\') }}<select name="stage">{% '
-                      'for c,a,e in stages %}<option value="{{ c }}" {{ \'selected\' if c==item.stage else \'\' }}>{{ '
-                      "t(a,e) }}</option>{% endfor %}</select></label><label>{{ t('الخياط / المسؤول','Tailor / "
-                      'assignee\') }}<input name="tailor" value="{{ item.tailor }}"></label><label>{{ '
-                      't(\'القماش\',\'Fabric\') }}<input name="fabric" value="{{ item.fabric }}"></label><label>{{ '
-                      't(\'اللون\',\'Colour\') }}<input name="color" value="{{ item.color }}"></label></div>{{ '
+                      '}}">{% else %}<div class="photo-placeholder">◇</div>{% endif %}</div><div>{% if '
+                      'item.kind==\'custom\' %}<div class="stage-trail">{% for code,a,e in stages %}<span class="{{ '
+                      '\'current\' if code==item.stage else \'\' }}">{{ t(a,e) }}</span>{% endfor %}</div><p>{{ '
+                      "t('الخياط','Tailor') }}: <strong>{{ item.tailor or '—' }}</strong> · {{ t('القماش','Fabric') "
+                      "}}: {{ item.fabric or '—' }} · {{ t('اللون','Colour') }}: {{ item.color or '—' }}</p>{% endif "
+                      '%}<p class="muted">{{ item.notes }}</p></div></div>{% if item.kind==\'custom\' '
+                      "%}<details><summary>{{ t('المقاسات وتحديث المرحلة','Measurements & production update') "
+                      '}}</summary><form method="post" action="{{ url_for(\'update_item\',oid=order.id,iid=item.id) '
+                      '}}">{{ token() }}<fieldset {{ \'disabled\' if order.cancelled or '
+                      'order.shipping_status!=\'pending\' else \'\' }}><div class="form-grid"><label>{{ t(\'مرحلة '
+                      'العباية\',\'Production stage\') }}<select name="stage">{% for c,a,e in stages %}<option '
+                      'value="{{ c }}" {{ \'selected\' if c==item.stage else \'\' }}>{{ t(a,e) }}</option>{% endfor '
+                      "%}</select></label><label>{{ t('الخياط / المسؤول','Tailor / assignee') }}<input "
+                      'name="tailor" value="{{ item.tailor }}"></label><label>{{ t(\'القماش\',\'Fabric\') }}<input '
+                      'name="fabric" value="{{ item.fabric }}"></label><label>{{ t(\'اللون\',\'Colour\') }}<input '
+                      'name="color" value="{{ item.color }}"></label></div>{{ '
                       "measurements(json_loads(item.measurements)) }}<label>{{ t('ملاحظات التفصيل','Tailoring notes') "
                       '}}<textarea name="notes" rows="2">{{ item.notes }}</textarea></label><label>{{ t(\'ملاحظة '
                       "التحديث / سبب العودة لمرحلة سابقة','Update note / reason for moving back') }}<input "
                       'name="reason" placeholder="{{ t(\'إلزامي عند العودة لمرحلة سابقة\',\'Required when moving '
                       'back\') }}"></label><button class="btn secondary">{{ t(\'حفظ تحديث العباية\',\'Save item '
-                      "update') }}</button></fieldset></form></details></section>{% endfor %}\n"
+                      "update') }}</button></fieldset></form></details>{% endif %}</section>{% endfor %}\n"
                       '<section class="panel"><div class="section-heading"><h2>{{ t(\'سجل الدفعات\',\'Payment '
                       'history\') }}</h2></div><div class="table-wrap"><table><thead><tr><th>{{ '
                       "t('السند','Receipt') }}</th><th>{{ t('التاريخ','Date') }}</th><th>{{ t('المبلغ','Amount') "
@@ -418,9 +439,9 @@ TEMPLATES = {'auth.html': "{% extends 'base.html' %}{% from 'macros.html' import
                       'class="timeline">{% for e in events %}<div><small class="muted">{{ e.created_at|date }} · {{ '
                       'e.actor }}</small><p>{{ e.detail }}</p></div>{% endfor %}</div></section>\n'
                       '</div><aside>\n'
-                      '<section class="panel padded"><h2>{{ t(\'تسجيل دفعة أو استرداد\',\'Payment or refund\') '
-                      '}}</h2><form method="post" action="{{ url_for(\'payment\',oid=order.id) }}">{{ token() '
-                      '}}<label>{{ t(\'نوع الحركة\',\'Transaction type\') }}<select name="type">{% if not '
+                      '<section class="panel padded" id="payment-form"><h2>{{ t(\'تسجيل دفعة أو استرداد\',\'Payment or '
+                      'refund\') }}</h2><form method="post" action="{{ url_for(\'payment\',oid=order.id) }}">{{ '
+                      'token() }}<label>{{ t(\'نوع الحركة\',\'Transaction type\') }}<select name="type">{% if not '
                       'order.cancelled %}<option value="payment">{{ t(\'دفعة من العميل\',\'Customer payment\') '
                       '}}</option>{% endif %}<option value="refund">{{ t(\'استرداد للعميل\',\'Customer refund\') '
                       "}}</option></select></label><label>{{ t('المبلغ / درهم','Amount / AED') }}<input "
@@ -456,28 +477,33 @@ TEMPLATES = {'auth.html': "{% extends 'base.html' %}{% from 'macros.html' import
                       "handover status') }}</button></fieldset></form>{% if order.delivered_at %}<p "
                       'class="green-text">{{ t(\'تاريخ التسليم الفعلي:\',\'Handed over:\') }} {{ '
                       'order.delivered_at|date }}</p>{% endif %}</section>\n'
-                      '{% if not order.cancelled and order.shipping_status==\'pending\' %}<details class="panel '
-                      'padded"><summary class="late-text">{{ t(\'إلغاء الطلب\',\'Cancel order\') }}</summary><form '
-                      'method="post" action="{{ url_for(\'cancel\',oid=order.id) }}" data-confirm="{{ t(\'هل تريد '
-                      "إلغاء هذا الطلب؟ يجب تسجيل استرداد أي مبلغ مدفوع بشكل مستقل.','Cancel this order? Any paid "
-                      'amount must be refunded separately.\') }}">{{ token() }}<label>{{ t(\'سبب '
-                      'الإلغاء\',\'Cancellation reason\') }}<textarea name="reason" '
+                      "{% if not order.cancelled and order.shipping_status=='pending' and order.sale_state!='sold' "
+                      '%}<details class="panel padded"><summary class="late-text">{{ t(\'إلغاء الطلب\',\'Cancel '
+                      'order\') }}</summary><form method="post" action="{{ url_for(\'cancel\',oid=order.id) }}" '
+                      'data-confirm="{{ t(\'هل تريد إلغاء هذا الطلب؟ يجب تسجيل استرداد أي مبلغ مدفوع بشكل '
+                      'مستقل.\',\'Cancel this order? Any paid amount must be refunded separately.\') }}">{{ token() '
+                      '}}<label>{{ t(\'سبب الإلغاء\',\'Cancellation reason\') }}<textarea name="reason" '
                       'required></textarea></label><button class="btn danger">{{ t(\'تأكيد الإلغاء\',\'Confirm '
                       "cancellation') }}</button></form></details>{% endif %}\n"
                       '</aside></div>{% endblock %}\n',
  'orders.html': "{% extends 'base.html' %}{% from 'macros.html' import order_table with context %}{% block content "
-                '%}<div class="page-heading"><div><span class="eyebrow">ORDER BOOK</span><h1>{{ t(\'الطلبات '
-                'والفواتير\',\'Orders & invoices\') }}</h1><p class="muted">{{ t(\'تتبع كل طلب، من تسجيل المقاسات حتى '
-                "آخر دفعة.','Track every order, from measurements to the last payment.') }}</p></div><div "
-                'class="actions"><a class="btn secondary" href="{{ url_for(\'export\') }}">↓ {{ '
-                't(\'تصدير\',\'Export\') }}</a><a class="btn" href="{{ url_for(\'new_order\') }}">＋ {{ t(\'طلب '
-                'جديد\',\'New order\') }}</a></div></div><section class="panel"><form class="filters"><input name="q" '
-                'value="{{ q }}" placeholder="{{ t(\'رقم الطلب، العميل، الهاتف أو الموديل\',\'Order, customer, phone '
-                'or model\') }}"><select name="status"><option value="">{{ t(\'جميع المراحل\',\'All stages\') '
-                '}}</option>{% for code,ar,en in stages %}<option value="{{ code }}" {{ \'selected\' if state==code '
-                "else '' }}>{{ t(ar,en) }}</option>{% endfor %}{% for code,ar,en in [('out','خرجت للتوصيل','Out for "
-                "delivery'),('delivered','تم "
-                "التسليم','Delivered'),('cancelled','ملغي','Cancelled'),('late','متأخر','Overdue')] %}<option "
+                '%}<div class="page-heading"><div><span class="eyebrow">ORDER BOOK</span><h1>{{ t(\'طلبات '
+                "التفصيل','Tailoring orders') if kind=='custom' else t('سجل مبيعات الجاهز','Ready-to-wear sales "
+                "history') if kind=='stock' else t('الطلبات والفواتير','Orders & invoices') }}</h1><p "
+                'class="muted">{{ t(\'حالة البيع والتسليم والدفعات لكل عميل.\',\'Sale status, handover and payments '
+                "for each customer.') if kind=='stock' else t('تتبع كل طلب، من تسجيل المقاسات حتى آخر دفعة.','Track "
+                'every order, from measurements to the last payment.\') }}</p></div><div class="actions"><a class="btn '
+                'secondary" href="{{ url_for(\'export\') }}">↓ {{ t(\'تصدير\',\'Export\') }}</a><a class="btn" '
+                'href="{{ url_for(\'ready_stock\') if kind==\'stock\' else url_for(\'new_order\') }}">＋ {{ t(\'حجز / '
+                "بيع جاهز','Reserve / sell ready stock') if kind=='stock' else t('طلب تفصيل جديد','New tailoring "
+                'order\') }}</a></div></div><section class="panel"><form class="filters"><input type="hidden" '
+                'name="kind" value="{{ kind }}"><input name="q" value="{{ q }}" placeholder="{{ t(\'رقم الطلب، العميل، '
+                'الهاتف أو الموديل\',\'Order, customer, phone or model\') }}"><select name="status"><option '
+                'value="">{{ t(\'جميع المراحل\',\'All stages\') }}</option>{% for code,ar,en in stages %}<option '
+                'value="{{ code }}" {{ \'selected\' if state==code else \'\' }}>{{ t(ar,en) }}</option>{% endfor %}{% '
+                "for code,ar,en in [('out','خرجت للتوصيل','Out for delivery'),('delivered','تم "
+                "التسليم','Delivered'),('reserved','حجز','Reserved'),('sold','بيع','Sold'),('returned','إرجاع','Returned'),('released','حجز "
+                "ملغي','Reservation released'),('cancelled','ملغي','Cancelled'),('late','متأخر','Overdue')] %}<option "
                 'value="{{ code }}" {{ \'selected\' if state==code else \'\' }}>{{ t(ar,en) }}</option>{% endfor '
                 '%}</select><select name="payment"><option value="">{{ t(\'جميع حالات الدفع\',\'All payments\') '
                 '}}</option><option value="unpaid" {{ \'selected\' if payment==\'unpaid\' else \'\' }}>{{ t(\'يوجد '
@@ -485,6 +511,192 @@ TEMPLATES = {'auth.html': "{% extends 'base.html' %}{% from 'macros.html' import
                 'else \'\' }}>{{ t(\'مسدد بالكامل\',\'Fully paid\') }}</option></select><button class="btn '
                 'secondary">{{ t(\'عرض\',\'Apply\') }}</button></form>{{ order_table(orders) }}<div '
                 'class="table-footer">{{ orders|length }} {{ t(\'طلب\',\'orders\') }}</div></section>{% endblock %}\n',
+ 'ready_detail.html': "{% extends 'base.html' %}{% from 'macros.html' import token with context %}{% block content %}\n"
+                      '<div class="page-heading"><div><a class="text-link" href="{{ url_for(\'ready_stock\') }}">{{ '
+                      't(\'العبايات الجاهزة /\',\'Ready stock /\') }}</a><h1 class="bidi">{{ stock.model_code '
+                      '}}</h1><p class="muted">{{ stock.model_title }} · #{{ stock.id[:8] }}</p></div><span '
+                      'class="badge {{ stock.state }}">{{ label(stock.state) }}</span></div>\n'
+                      '<div class="order-layout"><div><section class="panel padded"><div '
+                      'class="stock-create-layout"><div class="detail-photo">{% if stock.photo %}<img src="{{ '
+                      'url_for(\'photo\',name=stock.photo) }}" alt="{{ stock.model_title }}">{% else %}<span '
+                      'class="photo-placeholder">◇</span>{% endif %}</div><div><span class="eyebrow">{{ t(\'بيانات '
+                      "العباية','ABAYA DETAILS') }}</span><h2>{{ stock.price|money }} AED</h2><p>{{ t('تاريخ "
+                      'العرض\',\'Display date\') }}: <strong class="bidi">{{ stock.display_date }}</strong></p><p>{{ '
+                      "t('المقاس','Size') }}: {{ stock.size or '—' }} · {{ t('اللون','Colour') }}: {{ stock.color or "
+                      '\'—\' }}</p><p class="muted">{{ stock.notes }}</p></div></div></section>\n'
+                      '{% if order %}<section class="panel padded"><div class="section-heading"><div><h2>{{ '
+                      'order.customer_name }}</h2><p class="bidi muted">{{ order.customer_phone }} · {{ '
+                      'order.id|order_no }}</p></div><a class="btn secondary" href="{{ '
+                      'url_for(\'order_detail\',oid=order.id) }}">{{ t(\'الدفعات والتسليم\',\'Payments & handover\') '
+                      '}}</a></div><div class="stats compact"><div class="stat"><span>{{ t(\'قيمة الفاتورة\',\'Invoice '
+                      'total\') }}</span><strong class="amount">{{ order.total|money }}</strong></div><div '
+                      'class="stat"><span>{{ t(\'صافي المدفوع\',\'Net paid\') }}</span><strong class="amount">{{ '
+                      'order.paid|money }}</strong></div><div class="stat dark"><span>{{ t(\'المتبقي\',\'Balance\') '
+                      '}}</span><strong class="amount">{{ order.balance|money }}</strong></div></div><p>{{ t(\'حالة '
+                      "الطلب','Order status') }}: <strong>{{ label(order.status) }}</strong> · {{ label(order.mode) }} "
+                      '· {{ order.due_date }}</p>{% if order.refund_due %}<div class="notice">{{ t(\'المبلغ الواجب رده '
+                      "للعميل','Amount to refund') }}: <strong>{{ order.refund_due|money }} AED</strong> <a "
+                      'href="{{ url_for(\'order_detail\',oid=order.id) }}#payment-form">{{ t(\'تسجيل الاسترداد '
+                      'الفعلي\',\'Record actual refund\') }}</a></div>{% endif %}<a class="text-link" href="{{ '
+                      'url_for(\'invoice\',oid=order.id) }}" target="_blank">{{ t(\'فتح الفاتورة\',\'Open invoice\') '
+                      '}}</a></section>{% endif %}\n'
+                      '<section class="panel"><div class="section-heading"><h2>{{ t(\'سجل حجوزات ومبيعات هذه '
+                      "القطعة','This piece’s reservation & sale history') }}</h2></div><div "
+                      'class="table-wrap"><table><thead><tr><th>{{ t(\'الفاتورة\',\'Invoice\') }}</th><th>{{ '
+                      "t('العميل','Customer') }}</th><th>{{ t('الحالة','State') }}</th><th>{{ t('تاريخ العرض / "
+                      "البيع','Display / sale date') }}</th><th>{{ t('القيمة / صافي المدفوع','Total / net paid') "
+                      '}}</th></tr></thead><tbody>{% for h in history %}<tr><td><a href="{{ '
+                      'url_for(\'order_detail\',oid=h.order_id) }}">{{ h.order_id|order_no }}</a></td><td>{{ '
+                      'h.customer_name }}<small class="block bidi">{{ h.customer_phone }}</small></td><td><span '
+                      'class="badge {{ h.state }}">{{ label(h.state) }}</span><small class="block muted">{{ h.reason '
+                      '}}</small></td><td>{{ h.display_date }}<small class="block">{{ h.sold_at|date if h.sold_at else '
+                      '\'—\' }}</small></td><td class="number">{{ h.total|money }}<small class="block">{{ h.paid|money '
+                      '}}</small></td></tr>{% else %}<tr><td colspan="5" class="muted">{{ t(\'لم يتم حجز هذه القطعة أو '
+                      "بيعها بعد.','This piece has not been reserved or sold yet.') }}</td></tr>{% endfor "
+                      '%}</tbody></table></div></section></div><aside>\n'
+                      '{% if stock.state==\'available\' %}<section class="panel padded"><h2>{{ t(\'حجز أو بيع '
+                      'العباية\',\'Reserve or sell this piece\') }}</h2>{% if not customers %}<p><a href="{{ '
+                      'url_for(\'customers\') }}">{{ t(\'أضف بيانات العميل أولاً\',\'Add a customer first\') '
+                      '}}</a></p>{% endif %}<form method="post" action="{{ url_for(\'ready_sale\',sid=stock.id) }}" '
+                      'data-ready-sale data-price="{{ stock.price }}">{{ token() }}<label>{{ t(\'اسم '
+                      'العميل\',\'Customer\') }} *<select name="customer_id" required><option value="">{{ t(\'اختر '
+                      'العميل\',\'Select customer\') }}</option>{% for c in customers %}<option value="{{ c.id }}">{{ '
+                      'c.name }} — {{ c.phone }}</option>{% endfor %}</select></label><a class="text-link" href="{{ '
+                      'url_for(\'customers\') }}">{{ t(\'إضافة عميل\',\'Add customer\') }}</a><label>{{ '
+                      't(\'الحالة\',\'State\') }}<select name="state"><option value="reserved">{{ '
+                      't(\'حجز\',\'Reserved\') }}</option><option value="sold">{{ t(\'بيع\',\'Sold\') '
+                      '}}</option></select></label><label>{{ t(\'موعد التسليم\',\'Due date\') }}<input type="date" '
+                      'name="due_date" value="{{ today }}" required></label><label>{{ t(\'طريقة التسليم\',\'Handover '
+                      'method\') }}<select name="mode"><option value="pickup">{{ t(\'استلام من المحل\',\'Store '
+                      'pickup\') }}</option><option value="delivery">{{ t(\'توصيل\',\'Courier delivery\') '
+                      "}}</option></select></label><div data-ready-delivery><label>{{ t('عنوان التوصيل','Delivery "
+                      'address\') }}<textarea name="delivery_address" maxlength="2000"></textarea></label><label>{{ '
+                      't(\'رسوم التوصيل\',\'Delivery fee\') }}<input type="number" name="delivery_fee" value="0" '
+                      'min="0" step="0.01"></label></div><label>{{ t(\'الخصم\',\'Discount\') }}<input type="number" '
+                      'name="discount" value="0" min="0" step="0.01"></label><div class="sum-line"><span>{{ '
+                      "t('الإجمالي','Total') }}</span><strong data-ready-total>{{ stock.price|money "
+                      '}}</strong></div><label>{{ t(\'المدفوع الآن\',\'Paid now\') }}<input type="number" '
+                      'name="deposit" value="0" min="0" step="0.01"></label><label>{{ t(\'طريقة الدفع\',\'Payment '
+                      'method\') }}<select name="method">{% for c,a,e in methods %}<option value="{{ c }}">{{ t(a,e) '
+                      '}}</option>{% endfor %}</select></label><div class="sum-line remaining"><span>{{ '
+                      "t('المتبقي','Balance') }}</span><strong data-ready-balance>{{ stock.price|money "
+                      '}}</strong></div><label>{{ t(\'ملاحظات\',\'Notes\') }}<textarea name="notes" '
+                      'maxlength="2000"></textarea></label><button class="btn full" {{ \'disabled\' if not customers '
+                      "else '' }}>{{ t('حفظ وإصدار الفاتورة','Save & create invoice') }}</button><p "
+                      'class="caption">{{ t(\'تأكيد البيع لا يسجل التسليم أو الدفع تلقائياً. حدّث كل حركة عند '
+                      "حدوثها.','Confirming a sale does not record handover or payment automatically. Record each when "
+                      "it happens.') }}</p></form></section>\n"
+                      '{% elif stock.state==\'reserved\' %}<section class="panel padded"><h2>{{ t(\'القطعة '
+                      "محجوزة','Piece reserved') }}</h2><p>{{ t('أكد البيع عند اعتماد العميل، ثم سجل التسليم في "
+                      "الفاتورة.','Confirm the sale when agreed, then record handover in the order.') }}</p><form "
+                      'method="post" action="{{ url_for(\'ready_action\',sid=stock.id) }}">{{ token() }}<input '
+                      'type="hidden" name="order_id" value="{{ order.id }}"><input type="hidden" name="action" '
+                      'value="sell"><button class="btn full">{{ t(\'تحويل الحجز إلى بيع\',\'Confirm sale\') '
+                      "}}</button></form><details><summary>{{ t('إلغاء الحجز','Release reservation') }}</summary><form "
+                      'method="post" action="{{ url_for(\'cancel\',oid=order.id) }}">{{ token() }}<label>{{ '
+                      't(\'السبب\',\'Reason\') }}<textarea name="reason" required '
+                      'maxlength="1000"></textarea></label><button class="btn danger">{{ t(\'إلغاء وإتاحة القطعة '
+                      'للبيع\',\'Cancel & make available\') }}</button></form><p class="caption">{{ t(\'أي مبلغ مدفوع '
+                      "يبقى مستحقاً للعميل حتى تسجيل رده فعلياً.','Paid money remains refundable until its actual "
+                      "refund is recorded.') }}</p></details></section>\n"
+                      '{% elif stock.state==\'sold\' %}<section class="panel padded"><h2>{{ t(\'إرجاع '
+                      'العباية\',\'Return this abaya\') }}</h2><form method="post" action="{{ '
+                      'url_for(\'ready_action\',sid=stock.id) }}" data-confirm="{{ t(\'تسجيل إرجاع كامل لهذه الفاتورة؟ '
+                      'الدفعات ترد بحركة مالية مستقلة.\',\'Record a full return? Refund payments separately.\') }}">{{ '
+                      'token() }}<input type="hidden" name="order_id" value="{{ order.id }}"><input type="hidden" '
+                      'name="action" value="return"><label>{{ t(\'سبب الإرجاع\',\'Return reason\') }}<textarea '
+                      'name="reason" required maxlength="1000"></textarea></label><label class="check"><input '
+                      'type="checkbox" name="received_back" value="yes" required>{{ t(\'أؤكد استلام العباية فعلياً في '
+                      "المحل','I confirm the piece has physically returned to the store') }}</label><button "
+                      'class="btn danger full">{{ t(\'تسجيل الإرجاع\',\'Record return\') }}</button><p '
+                      'class="caption">{{ t(\'إرجاع كامل يلغي المبلغ المتبقي ويُظهر صافي المدفوع كمبلغ واجب رده. سجل '
+                      "الاسترداد بعد دفعه فعلياً.','A full return clears the balance and makes net payments "
+                      "refundable. Record the refund after paying it.') }}</p></form></section>\n"
+                      '{% elif stock.state==\'returned\' %}<section class="panel padded"><h2>{{ t(\'إعادة عرض '
+                      "القطعة','Relist the piece') }}</h2><p>{{ t('يبقى سجل العميل السابق واسترداده محفوظاً في "
+                      "الفاتورة الأصلية.','The previous customer and refund stay in the original invoice.') "
+                      '}}</p><form method="post" action="{{ url_for(\'ready_action\',sid=stock.id) }}">{{ token() '
+                      '}}<input type="hidden" name="order_id" value="{{ order.id }}"><input type="hidden" '
+                      'name="action" value="relist"><label>{{ t(\'تاريخ إعادة العرض\',\'New display date\') }}<input '
+                      'type="date" name="display_date" value="{{ today }}" max="{{ today }}" '
+                      'required></label><label>{{ t(\'قيمة البيع\',\'Sale price\') }}<input type="number" name="price" '
+                      'value="{{ \'%.2f\' % (stock.price/100) }}" min="0" step="0.01" required></label><label '
+                      'class="check"><input type="checkbox" name="inspected" value="yes" required>{{ t(\'تم فحص '
+                      "العباية وهي صالحة للبيع','The abaya was inspected and is fit for sale') }}</label><button "
+                      'class="btn full">{{ t(\'إتاحة للبيع مجدداً\',\'Make available again\') '
+                      '}}</button></form></section>{% endif %}\n'
+                      '</aside></div>{% endblock %}\n',
+ 'ready_stock.html': "{% extends 'base.html' %}{% from 'macros.html' import token with context %}{% block content %}\n"
+                     '<div class="page-heading"><div><span class="eyebrow">READY TO WEAR</span><h1>{{ t(\'العبايات '
+                     'الجاهزة\',\'Ready-to-wear abayas\') }}</h1><p class="muted">{{ t(\'من العرض إلى الحجز والبيع '
+                     "والإرجاع؛ سجل مستقل لكل قطعة.','From display to reservation, sale and return. One record per "
+                     'physical piece.\') }}</p></div><div class="actions"><a class="btn secondary" href="{{ '
+                     'url_for(\'export_ready\') }}">{{ t(\'تصدير الكشف\',\'Export register\') }}</a><a class="btn" '
+                     'href="#add-stock">＋ {{ t(\'إضافة عباية جاهزة\',\'Add ready abaya\') }}</a></div></div>\n'
+                     '<div class="stats">{% for code in [\'available\',\'reserved\',\'sold\',\'returned\'] %}<a '
+                     'class="stat {{ \'dark\' if state==code else \'\' }}" href="{{ '
+                     'url_for(\'ready_stock\',state=code) }}"><span>{{ label(code) }}</span><strong>{{ counts[code] '
+                     "}}</strong><small>{{ t('قطعة','pieces') }}</small></a>{% endfor %}</div>\n"
+                     '<section class="panel"><div class="section-heading"><h2>{{ t(\'متابعة الجاهز\',\'Ready stock '
+                     'register\') }}</h2><a class="text-link" href="{{ url_for(\'orders\',kind=\'stock\') }}">{{ '
+                     "t('سجل جميع الحجوزات والمبيعات ←','All reservations & sales →') }}</a></div>\n"
+                     '<form class="filters"><input name="q" value="{{ q }}" placeholder="{{ t(\'رقم الموديل، العميل أو '
+                     'الهاتف\',\'Model code, customer or phone\') }}"><select name="state"><option value="">{{ '
+                     "t('جميع الحالات','All states') }}</option>{% for code in "
+                     '[\'available\',\'reserved\',\'sold\',\'returned\'] %}<option value="{{ code }}" {{ \'selected\' '
+                     'if state==code else \'\' }}>{{ label(code) }}</option>{% endfor %}</select><button class="btn '
+                     'secondary">{{ t(\'بحث\',\'Search\') }}</button></form>\n'
+                     '<div class="table-wrap"><table class="ready-table"><thead><tr><th>{{ t(\'الصورة / '
+                     "الموديل','Photo / model') }}</th><th>{{ t('تاريخ العرض','Display date') }}</th><th>{{ "
+                     "t('القيمة','Price') }}</th><th>{{ t('حالة البيع','Sale state') }}</th><th>{{ t('اسم "
+                     "العميل','Customer') }}</th><th>{{ t('المدفوع','Paid') }}</th><th>{{ t('المتبقي','Balance') "
+                     "}}</th><th>{{ t('حالة الطلب / التسليم','Order / handover') }}</th><th></th></tr></thead><tbody>\n"
+                     '{% for s in stock %}<tr><td><a class="stock-cell" href="{{ url_for(\'ready_detail\',sid=s.id) '
+                     '}}">{% if s.photo %}<img src="{{ url_for(\'photo\',name=s.photo) }}" alt="{{ s.model_title }}" '
+                     'loading="lazy">{% else %}<span class="stock-thumb-placeholder">◇</span>{% endif %}<span><strong '
+                     'class="bidi">{{ s.model_code }}</strong><small class="block muted">{{ s.model_title }} · {{ '
+                     's.size or \'—\' }}</small><small class="block muted bidi">#{{ s.id[:8] '
+                     '}}</small></span></a></td><td class="bidi">{{ s.display_date }}</td><td class="number">{{ '
+                     's.price|money }}</td><td><span class="badge {{ s.state }}">{{ label(s.state) '
+                     '}}</span></td><td>{{ s.customer_name or \'—\' }}<small class="block bidi muted">{{ '
+                     's.customer_phone or \'\' }}</small></td><td class="number">{{ s.paid|money if s.current_order_id '
+                     'else \'—\' }}</td><td class="number">{{ s.balance|money if s.current_order_id else \'—\' }}{% if '
+                     's.refund_due %}<small class="block late-text">{{ t(\'للرد للعميل\',\'Refund due\') }} {{ '
+                     "s.refund_due|money }}</small>{% endif %}</td><td>{% if s.current_order_id %}{{ label('returned') "
+                     'if s.state==\'returned\' else label(s.shipping_status) }}<small class="block muted">{{ '
+                     'label(s.mode) }}</small><small class="block bidi">{{ s.due_date }}</small>{% else %}—{% endif '
+                     '%}</td><td><a class="text-link" href="{{ url_for(\'ready_detail\',sid=s.id) }}">{{ '
+                     "t('فتح','Open') }}</a></td></tr>\n"
+                     '{% else %}<tr><td colspan="9"><div class="empty"><strong>{{ t(\'لا توجد قطع بهذه الحالة\',\'No '
+                     "matching pieces') }}</strong><p>{{ t('أضف موديل العباية وصورته، ثم سجل القطعة الجاهزة "
+                     "أدناه.','Add the model and photo, then register a piece below.') }}</p></div></td></tr>{% endfor "
+                     '%}\n'
+                     '</tbody></table></div><div class="table-footer">{{ stock|length }} {{ t(\'قطعة · المبالغ '
+                     "بالدرهم','pieces · amounts in AED') }}</div></section>\n"
+                     '<section class="panel padded" id="add-stock"><div class="section-heading"><div><h2>{{ t(\'إضافة '
+                     'عباية للعرض\',\'Add a piece to display\') }}</h2><p class="muted">{{ t(\'كل تسجيل يمثل قطعة '
+                     "واحدة؛ يمكن تكرار الموديل لقطع أو مقاسات مختلفة.','Each record is one piece; the same model may "
+                     'have several pieces or sizes.\') }}</p></div><a class="text-link" href="{{ url_for(\'models\') '
+                     '}}">{{ t(\'إضافة موديل وصورته\',\'Add model & photo\') }}</a></div>\n'
+                     '<form method="post" class="catalog-form">{{ token() }}<div class="stock-create-layout"><div '
+                     'class="detail-photo"><img class="hidden" data-catalog-photo alt="{{ t(\'صورة الموديل\',\'Model '
+                     'photo\') }}"><span class="photo-placeholder" data-catalog-placeholder>◇</span></div><div><div '
+                     'class="form-grid"><label>{{ t(\'رقم الموديل\',\'Model code\') }} *<input name="code" '
+                     'list="ready-model-codes" data-catalog-code required maxlength="60" autocomplete="off"><small '
+                     'class="muted" data-catalog-result aria-live="polite">{{ t(\'اكتب الرقم لظهور الصورة '
+                     "والسعر','Enter the code to show its photo and price') }}</small></label><label>{{ t('تاريخ "
+                     'العرض\',\'Display date\') }} *<input type="date" name="display_date" value="{{ today }}" max="{{ '
+                     'today }}" required></label><label>{{ t(\'القيمة / درهم\',\'Price / AED\') }} *<input '
+                     'type="number" name="price" min="0" max="10000000" step="0.01" data-catalog-price '
+                     'required></label><label>{{ t(\'المقاس الجاهز\',\'Ready size\') }}<input name="size" '
+                     'maxlength="80" placeholder="56 / M"></label><label>{{ t(\'اللون\',\'Colour\') }}<input '
+                     'name="color" maxlength="80"></label><label>{{ t(\'ملاحظات القطعة\',\'Piece notes\') }}<input '
+                     'name="notes" maxlength="2000"></label></div><button class="btn" {{ \'disabled\' if not models '
+                     "else '' }}>{{ t('حفظ كعباية معروضة للبيع','Save as available for sale') "
+                     '}}</button></div></div></form>\n'
+                     '<datalist id="ready-model-codes">{% for m in models %}<option value="{{ m.code }}">{{ m.title '
+                     '}}</option>{% endfor %}</datalist></section>\n'
+                     '{% endblock %}\n',
  'settings.html': "{% extends 'base.html' %}{% from 'macros.html' import token with context %}{% block content %}<div "
                   'class="page-heading"><div><span class="eyebrow">PREFERENCES</span><h1>{{ t(\'الإعدادات والنسخ '
                   'الاحتياطي\',\'Settings & backup\') }}</h1></div></div><div class="split"><section class="panel '
@@ -725,11 +937,66 @@ STATIC = {'app.css': ("@font-face{font-family:AtelierArabic;src:local('Noto Sans
              '270px}.invoice-header,.invoice-parties,.invoice-bottom,.invoice-totals,.ticket-item{break-inside:avoid}tr{break-inside:avoid}.invoice-parties{padding:20px '
              '0}.invoice-table '
              'th{background:#f3f2ee!important}thead{display:table-header-group}.invoice-footer{margin-top:24px}.print-measures{grid-template-columns:repeat(4,1fr)}.ticket-item{grid-template-columns:100px '
-             '1fr}*{-webkit-print-color-adjust:exact;print-color-adjust:exact}}\n',
+             '1fr}*{-webkit-print-color-adjust:exact;print-color-adjust:exact}}\n'
+             ':root{--stock-thumb-width:56px}\n'
+             '.workspace-paths{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin:0 0 24px}.workspace-paths '
+             '.panel{margin:0;border-top:3px solid #a78253}.workspace-paths '
+             'a:hover{border-color:#a78253}.workspace-paths h2{margin:10px 0}.workspace-paths '
+             'p{margin:0;line-height:1.8}\n'
+             '.stock-cell{display:flex;gap:12px;align-items:center;min-width:215px}.stock-cell '
+             'img,.stock-thumb-placeholder{width:var(--stock-thumb-width);height:76px;object-fit:cover;border-radius:8px;background:#eee9e1;flex-shrink:0}.stock-thumb-placeholder{display:grid;place-items:center}.ready-table{min-width:1050px}.stock-create-layout{display:grid;grid-template-columns:180px '
+             '1fr;gap:24px}.stock-create-layout .detail-photo{width:100%;max-width:180px}.stock-create-layout '
+             '.detail-photo '
+             'img{width:100%;max-height:260px;object-fit:contain}.badge.available{background:#edf3ee;color:#3c6550}.badge.reserved{background:#fff1dc;color:#875f19}.badge.sold{background:#e8effa;color:#315488}.badge.returned,.badge.released{background:#fae9e6;color:#9a4b40}\n'
+             '@media(max-width:700px){.workspace-paths{grid-template-columns:1fr;gap:12px}.stock-create-layout{grid-template-columns:1fr}.stock-create-layout '
+             '.detail-photo{max-width:160px;margin:auto}.ready-table{font-size:13px}}\n'
+             '\n'
+             '.stock-create-layout .detail-photo{height:auto;min-height:160px}\n',
              'text/css; charset=utf-8'),
  'app.js': ("'use strict';\n"
             "const ar=document.documentElement.lang==='ar';\n"
             'const say=(a,e)=>ar?a:e;\n'
+            "document.querySelectorAll('.catalog-form').forEach(form=>{\n"
+            '  const '
+            "input=form.querySelector('[data-catalog-code]'),photo=form.querySelector('[data-catalog-photo]'),message=form.querySelector('[data-catalog-result]'),placeholder=form.querySelector('[data-catalog-placeholder]');\n"
+            '  let timer,version=0;\n'
+            '  async function lookup(){\n'
+            '    const current=++version;\n'
+            "    photo.classList.add('hidden');photo.removeAttribute('src');placeholder.classList.remove('hidden');\n"
+            "    input.setCustomValidity(say('اختر موديل محفوظاً','Choose a saved model'));\n"
+            "    message.textContent=say('جارٍ عرض الموديل…','Loading model…');\n"
+            '    try{\n'
+            "      const response=await fetch('/api/model?code='+encodeURIComponent(input.value.trim()));\n"
+            "      if(!response.ok)throw new Error('Model not found');\n"
+            '      const model=await response.json();if(current!==version)return;\n'
+            "      input.setCustomValidity('');message.textContent=model.title;\n"
+            "      form.querySelector('[data-catalog-price]').value=(model.price/100).toFixed(2);\n"
+            '      '
+            "if(model.photo_url){photo.src=model.photo_url;photo.classList.remove('hidden');placeholder.classList.add('hidden');}\n"
+            "    }catch(error){if(current===version){message.textContent=say('أضف الموديل في الكتالوج أو تحقق من "
+            "الاتصال.','Add the model to the catalogue or check your connection.');}}\n"
+            '  }\n'
+            "  input.addEventListener('input',()=>{version++;clearTimeout(timer);input.setCustomValidity(say('انتظر "
+            "التحقق من الموديل','Wait for model lookup'));timer=setTimeout(lookup,250);});\n"
+            "  input.addEventListener('change',()=>{clearTimeout(timer);lookup();});\n"
+            '});\n'
+            "document.querySelectorAll('[data-ready-sale]').forEach(form=>{\n"
+            '  const field=name=>form.elements.namedItem(name),fils=v=>Math.round(Number(v||0)*100),fmt=v=>new '
+            "Intl.NumberFormat('en-AE',{minimumFractionDigits:2,maximumFractionDigits:2}).format(v/100);\n"
+            '  function totals(){\n'
+            '    const '
+            "price=Number(form.dataset.price),delivery=field('mode').value==='delivery',discount=fils(field('discount').value),deposit=fils(field('deposit').value),fee=delivery?fils(field('delivery_fee').value):0,total=price-discount+fee;\n"
+            "    form.querySelector('[data-ready-total]').textContent=fmt(total);\n"
+            "    form.querySelector('[data-ready-balance]').textContent=fmt(total-deposit);\n"
+            "    form.querySelector('[data-ready-delivery]').classList.toggle('hidden',!delivery);\n"
+            "    field('delivery_address').required=delivery;field('delivery_fee').disabled=!delivery;\n"
+            "    field('discount').setCustomValidity(discount>price?say('الخصم يتجاوز السعر','Discount exceeds "
+            "price'):'');\n"
+            "    field('deposit').setCustomValidity(deposit>total?say('الدفعة تتجاوز الإجمالي','Payment exceeds "
+            "total'):'');\n"
+            '  }\n'
+            "  form.addEventListener('input',totals);form.addEventListener('change',totals);totals();\n"
+            '});\n'
             "document.querySelectorAll('[data-print]').forEach(el=>el.addEventListener('click',()=>window.print()));\n"
             "document.querySelectorAll('[data-back]').forEach(el=>el.addEventListener('click',()=>history.back()));\n"
             "document.querySelectorAll('form[data-confirm]').forEach(form=>form.addEventListener('submit',e=>{if(!confirm(form.dataset.confirm))e.preventDefault();}));\n"
@@ -811,8 +1078,6 @@ STATIC = {'app.css': ("@font-face{font-family:AtelierArabic;src:local('Noto Sans
             "    item.querySelector('.copy-measurements').addEventListener('click',()=>copyMeasurements(item));\n"
             '    '
             "item.querySelector('.remove-item').addEventListener('click',()=>{if(items.children.length>1){item.remove();renumber();totals();}});\n"
-            '    '
-            "item.querySelector('.kind-input').addEventListener('change',e=>{item.querySelector('.measure-details').open=e.target.value==='custom';});\n"
             '    totals();\n'
             '  }\n'
             "  customerSelect.addEventListener('change',()=>{\n"

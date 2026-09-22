@@ -7,8 +7,9 @@
   <a class="brand" href="{{ url_for('dashboard') }}"><span class="monogram">F</span><span>FOOLADI<small>{{ t('فولادي للعباية','ABAYA ATELIER') }}</small></span></a>
   <div class="nav-caption">{{ t('مساحة العمل','WORKSPACE') }}</div>
   <nav>
-  {% for endpoint,icon,ar,en in [('dashboard','◈','نظرة عامة','Overview'),('orders','▤','الطلبات والفواتير','Orders & invoices'),('workshop','✂','المشغل','Workshop'),('customers','♙','العملاء والمقاسات','Customers & sizes'),('models','◇','كتالوج الموديلات','Model catalogue'),('settings','⚙','الإعدادات والنسخ','Settings & backup')] %}
-  <a href="{{ url_for(endpoint) }}" class="{{ 'active' if request.endpoint==endpoint or endpoint=='orders' and request.endpoint in ('new_order','order_detail') else '' }}"><span class="nav-icon">{{ icon }}</span>{{ t(ar,en) }}</a>
+  <a href="{{ url_for('orders',kind='custom') }}" class="{{ 'active' if request.args.get('kind')=='custom' or request.endpoint=='new_order' else '' }}"><span class="nav-icon">✂</span>{{ t('طلبات التفصيل','Tailoring orders') }}</a>
+  {% for endpoint,icon,ar,en in [('dashboard','◈','نظرة عامة','Overview'),('ready_stock','◇','العبايات الجاهزة','Ready-to-wear'),('orders','▤','كل الطلبات والفواتير','All orders & invoices'),('workshop','✂','المشغل','Workshop'),('customers','♙','العملاء والمقاسات','Customers & sizes'),('models','◇','كتالوج الموديلات','Model catalogue'),('settings','⚙','الإعدادات والنسخ','Settings & backup')] %}
+  <a href="{{ url_for(endpoint) }}" class="{{ 'active' if request.endpoint==endpoint and not request.args.get('kind') or endpoint=='ready_stock' and request.endpoint=='ready_detail' else '' }}"><span class="nav-icon">{{ icon }}</span>{{ t(ar,en) }}</a>
   {% endfor %}
   </nav>
   <div class="sidebar-bottom"><div class="status-dot"></div><span>{{ t('المحل والمشغل في مكان واحد','Store & atelier, together') }}</span></div>

@@ -15,6 +15,14 @@
 
 ابدأ من [دليل النشر بالعربية](DEPLOY_AR.md). تعليمات تشغيل النسخة السابقة ومتابعة الطلبات موجودة في [دليل الاستخدام](USER_GUIDE.md).
 
+## Version 2 — two distinct workspaces
+
+- **Tailoring orders / طلبات التفصيل:** customer measurements, saved model photo, production stages, invoice, payments and pickup/courier handover.
+- **Ready-to-wear / العبايات الجاهزة:** one physical piece per record, model code and saved photo, display date, price, size, customer, paid amount, balance and handover state.
+- Stock states are on display, reserved, sold and returned. A reservation becomes a sale explicitly; payment and handover are recorded independently.
+- A full return preserves the original sale, clears its receivable and tracks any money still owed back to the customer. Refunds are recorded separately when actually paid. Relisting creates a new availability cycle without overwriting earlier sales.
+- Existing orders remain in the all-orders register. New ready sales must use the ready-stock workspace. Apply **all** migrations, including `0002_ready_stock.sql`, before deploying this version.
+
 ## Features
 
 - Customer profiles and measurement defaults; independent measurements per order item.
@@ -49,7 +57,7 @@ Before live use, complete `uv run pywrangler deploy --dry-run`, apply migrations
 - Images are decoded, resized and re-encoded as JPEG before R2 storage. R2 is private; image retrieval goes through authenticated Flask routes. There is no public R2 URL.
 - If an image upload succeeds but its subsequent database mutation conflicts, an unused image can remain in R2. No order references it; no automatic cleanup deletes historical photos.
 - Secrets live in Workers secrets. Initial setup requires a separate owner token. Cookies are Secure, HttpOnly and SameSite=Lax, with CSRF protection and database-backed authentication version checks.
-- One administrator account is supported. Employee role separation, VAT calculation, automatic courier/payment integrations and post-delivery returns remain outside this release.
+- One login account is supported. Employee role separation, VAT calculation, automatic courier/payment integrations and partial returns remain outside this release. Full ready-to-wear returns are supported, including after delivery.
 
 ## Important boundaries
 
@@ -57,7 +65,7 @@ Python Workers are currently described as beta in Cloudflare's documentation. A 
 
 The built-in cloud backup is bounded to 10,000 rows per table, 100 referenced photos and 20 MiB of raw data. For larger installations, use an administrative D1 export and R2 backup. Setup does not enable scheduled backups automatically.
 
-The cloud backup format differs from the desktop ZIP. `scripts/prepare_restore.py` converts it into SQL and photo files for restoration to **new empty resources**. It never contacts Cloudflare or modifies a live database.
+The cloud backup format (`fooladi-cloud-v2`) differs from the desktop ZIP. It includes stock and sale history. `scripts/prepare_restore.py` accepts cloud v1/v2 backups and converts them into SQL and photos for restoration to **new empty resources** after applying all migrations. It never contacts Cloudflare or modifies a live database.
 
 ## Official references
 

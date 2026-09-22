@@ -19,6 +19,7 @@ from flask import Flask, Response, abort, flash, g, jsonify, redirect, render_te
 from PIL import Image, ImageOps, UnidentifiedImageError
 from werkzeug.security import check_password_hash, generate_password_hash
 from cloud_storage import CloudBackendError, ConcurrentWrite, D1Connection, R2Photos, WorkerSessionInterface
+from ready_stock import READY_SCHEMA, register_ready_routes
 
 ROOT = Path(__file__).resolve().parent
 STAGES = [('received', 'استلام الطلب', 'Received'), ('cutting', 'القص', 'Cutting'), ('sewing', 'الخياطة', 'Sewing'), ('finishing', 'التطريز والتشطيب', 'Finishing'), ('quality', 'فحص الجودة', 'Quality check'), ('ready', 'جاهزة للتسليم', 'Ready')]
@@ -124,7 +125,7 @@ def create_app(data_dir=None, test_config=None, cloud=False):
     if not cloud:
         with app.app_context():
             db().execute('PRAGMA journal_mode=WAL')
-            db().executescript(SCHEMA)
+            db().executescript(SCHEMA + READY_SCHEMA)
             db().commit()
 
     @contextmanager
@@ -155,6 +156,7 @@ def create_app(data_dir=None, test_config=None, cloud=False):
 
     def label(code):
         entries = STAGES + METHODS + [('pickup','استلام من المحل','Store pickup'),('delivery','توصيل','Delivery'),('pending','بانتظار التسليم','Awaiting handover'),('out','خرجت للتوصيل','Out for delivery'),('delivered','تم التسليم','Delivered'),('cancelled','ملغي','Cancelled'),('custom','تفصيل','Made to measure'),('stock','جاهز','Ready to wear')]
+        entries += [('available','معروضة للبيع','On display'),('reserved','حجز','Reserved'),('sold','بيع','Sold'),('returned','إرجاع','Returned'),('released','حجز ملغي','Reservation released')]
         return next((t(a, e) for c, a, e in entries if c == code), code)
 
     def event(order_id, kind, detail, item_id=None):
@@ -167,18 +169,20 @@ def create_app(data_dir=None, test_config=None, cloud=False):
         order['balance'] = 0 if order['cancelled'] else order['total'] - order['paid']
         order['refund_due'] = order['paid'] if order['cancelled'] else 0
         order['ready'] = bool(items) and all(x['stage']=='ready' for x in items)
+        order['has_custom'] = any(x['kind']=='custom' for x in items)
+        order['has_stock'] = any(x['kind']=='stock' for x in items)
         if order['cancelled']:
-            order['status']='cancelled'
+            order['status']='returned' if order.get('sale_state')=='returned' else 'cancelled'
         elif order['shipping_status']!='pending':
             order['status']=order['shipping_status']
         else:
             ranks={c:i for i,(c,_,_) in enumerate(STAGES)}
             order['status']=min((x['stage'] for x in items),key=lambda c:ranks[c],default='received')
-        order['overdue'] = order['due_date'] < today() and order['status'] not in ('delivered','cancelled')
+        order['overdue'] = order['due_date'] < today() and order['status'] not in ('delivered','cancelled','returned')
         return order
 
     def get_order(oid):
-        row = db().execute('SELECT * FROM orders WHERE id=?', (oid,)).fetchone()
+        row = db().execute('SELECT o.*,r.stock_id,r.state AS sale_state,r.display_date AS sale_display_date,r.closed_at AS sale_closed_at FROM orders o LEFT JOIN ready_sales r ON r.order_id=o.id WHERE o.id=?', (oid,)).fetchone()
         if not row:
             abort(404)
         items = [dict(x) for x in db().execute('SELECT * FROM items WHERE order_id=? ORDER BY id',(oid,))]
@@ -186,7 +190,7 @@ def create_app(data_dir=None, test_config=None, cloud=False):
         return decorate_order(row,items,paid)
 
     def all_orders():
-        rows=db().execute('SELECT o.*,COALESCE(p.paid,0) AS paid FROM orders o LEFT JOIN (SELECT order_id,SUM(amount) AS paid FROM payments GROUP BY order_id) p ON p.order_id=o.id ORDER BY o.id DESC').fetchall()
+        rows=db().execute('SELECT o.*,r.stock_id,r.state AS sale_state,r.display_date AS sale_display_date,r.closed_at AS sale_closed_at,COALESCE(p.paid,0) AS paid FROM orders o LEFT JOIN ready_sales r ON r.order_id=o.id LEFT JOIN (SELECT order_id,SUM(amount) AS paid FROM payments GROUP BY order_id) p ON p.order_id=o.id ORDER BY o.id DESC').fetchall()
         grouped={r['id']:[] for r in rows}
         for item in db().execute('SELECT * FROM items ORDER BY id'):
             if item['order_id'] in grouped:grouped[item['order_id']].append(dict(item))
@@ -316,9 +320,9 @@ def create_app(data_dir=None, test_config=None, cloud=False):
     @app.get('/')
     def dashboard():
         orders=all_orders()
-        active=[o for o in orders if o['status'] not in ('delivered','cancelled')]
+        active=[o for o in orders if o['status'] not in ('delivered','cancelled','returned')]
         stats=dict(active=len(active),ready=sum(o['ready'] and o['shipping_status']=='pending' for o in active),late=sum(o['overdue'] for o in active),balance=sum(o['balance'] for o in orders),collected=sum(o['paid'] for o in orders),refund_due=sum(o['refund_due'] for o in orders))
-        return render_template('dashboard.html',orders=sorted(active,key=lambda o:o['due_date'])[:8],stats=stats,counts={c:sum(o['status']==c for o in active) for c,_,_ in STAGES})
+        return render_template('dashboard.html',orders=sorted(active,key=lambda o:o['due_date'])[:8],stats=stats,counts={c:sum(o['status']==c and o['has_custom'] for o in active) for c,_,_ in STAGES})
 
     @app.route('/customers',methods=['GET','POST'])
     def customers():
@@ -401,19 +405,23 @@ def create_app(data_dir=None, test_config=None, cloud=False):
         result['photo_url']=url_for('photo',name=row['photo']) if row['photo'] else ''
         return jsonify(result)
 
+    @app.get('/tailoring')
     @app.get('/orders')
     def orders():
         q=request.args.get('q','').strip().lower()
         state=request.args.get('status','')
         payment=request.args.get('payment','')
         result=all_orders()
+        kind='custom' if request.path=='/tailoring' else request.args.get('kind','')
+        if kind=='custom':result=[o for o in result if o['has_custom']]
+        elif kind=='stock':result=[o for o in result if o['has_stock']]
         if q:
             result=[o for o in result if q in ' '.join([f"FL-{o['id']:05d}",o['customer_name'],o['customer_phone']]+[x['model_code'] for x in o['items']]).lower()]
         if state=='late':result=[o for o in result if o['overdue']]
-        elif state:result=[o for o in result if o['status']==state]
+        elif state:result=[o for o in result if o['status']==state or o['sale_state']==state]
         if payment=='unpaid':result=[o for o in result if o['balance']>0]
         if payment=='paid':result=[o for o in result if o['balance']==0 and not o['cancelled']]
-        return render_template('orders.html',orders=result,q=q,state=state,payment=payment)
+        return render_template('orders.html',orders=result,q=q,state=state,payment=payment,kind=kind)
 
     @app.route('/orders/new',methods=['GET','POST'])
     def new_order():
@@ -443,7 +451,7 @@ def create_app(data_dir=None, test_config=None, cloud=False):
                     except ValueError:raise ValidationError('الكمية غير صحيحة. / Invalid quantity.')
                     if not 1<=qty<=100:raise ValidationError('الكمية من 1 إلى 100. / Quantity must be 1 to 100.')
                     kind=request.form.get(p+'kind')
-                    if kind not in ('custom','stock'):abort(400)
+                    if kind!='custom':raise ValidationError('سجل بيع الجاهز من قسم العبايات الجاهزة. / Record ready-to-wear sales in the ready stock section.')
                     measures=read_measures(request.form,p)
                     if kind=='custom' and not any(k in measures for k,_,_ in MEASURES):
                         raise ValidationError('أدخل مقاساً واحداً على الأقل لكل عباية تفصيل. / Enter measurements for made-to-measure items.')
@@ -502,6 +510,7 @@ def create_app(data_dir=None, test_config=None, cloud=False):
             if order['cancelled'] or order['shipping_status']!='pending':raise ValidationError('لا يمكن تعديل الإنتاج بعد خروج الطلب أو إلغائه. / Production cannot be edited after dispatch or cancellation.')
             item=next((x for x in order['items'] if x['id']==iid),None)
             if not item:abort(404)
+            if item['kind']=='stock':raise ValidationError('العباية الجاهزة لا تمر بمراحل التفصيل. / Ready stock has no tailoring stages.')
             stage=request.form.get('stage')
             valid=[x[0] for x in STAGES]
             if stage not in valid:abort(400)
@@ -526,6 +535,7 @@ def create_app(data_dir=None, test_config=None, cloud=False):
             if order['cancelled'] or order['shipping_status']=='delivered':raise ValidationError('الطلب مغلق. / Order is closed.')
             target=request.form.get('shipping_status')
             if target not in ('pending','out','delivered'):abort(400)
+            if target!='pending' and order.get('sale_state')=='reserved':raise ValidationError('أكد البيع أولاً قبل تسليم القطعة المحجوزة. / Confirm the sale before handing over reserved stock.')
             mode=request.form.get('mode')
             if mode not in ('pickup','delivery'):abort(400)
             if mode!=order['mode'] and (order['delivery_fee'] or order['shipping_status']!='pending'):
@@ -550,8 +560,12 @@ def create_app(data_dir=None, test_config=None, cloud=False):
         with transaction():
             order=get_order(oid)
             if order['shipping_status']!='pending' or order['cancelled']:raise ValidationError('الإلغاء متاح قبل التسليم أو الخروج للتوصيل فقط. / Cancel only before dispatch or handover.')
+            if order.get('sale_state')=='sold':raise ValidationError('استخدم إرجاع العباية من سجل الجاهز. / Use the return action in the ready stock record.')
             reason=text_input(request.form,'reason',1000,True)
             db().execute('UPDATE orders SET cancelled=1,cancel_reason=? WHERE id=?',(reason,oid))
+            if order.get('sale_state')=='reserved':
+                db().execute("UPDATE ready_sales SET state='released',closed_at=?,reason=? WHERE order_id=?",(now(),reason,oid))
+                db().execute("UPDATE ready_stock SET state='available',current_order_id=NULL WHERE id=?",(order['stock_id'],))
             event(oid,'cancelled',reason)
         return redirect(url_for('order_detail',oid=oid))
 
@@ -561,7 +575,7 @@ def create_app(data_dir=None, test_config=None, cloud=False):
 
     @app.get('/workshop')
     def workshop():
-        orders=[o for o in all_orders() if o['status'] not in ('delivered','cancelled','out')]
+        orders=[o for o in all_orders() if o['has_custom'] and o['status'] not in ('delivered','cancelled','returned','out')]
         return render_template('workshop.html',orders=orders)
 
     @app.route('/settings',methods=['GET','POST'])
@@ -619,6 +633,7 @@ def create_app(data_dir=None, test_config=None, cloud=False):
         finally:
             snapshot.unlink(missing_ok=True)
 
+    register_ready_routes(app,db=db,transaction=transaction,get_order=get_order,event=event,t=t,label=label,now=now,today=today,money=money,text_input=text_input,ValidationError=ValidationError,methods=METHODS)
     return app
 
 if __name__=='__main__':

@@ -69,12 +69,13 @@ def test_complete_pickup_lifecycle(env):
 
 def test_courier_and_multiple_items(env):
     _,c,post,_=env
-    data=order_data(mode='delivery',delivery_fee='20',delivery_address='Dubai, unit 1',item_count='2',i0_kind='stock',i1_code='FL-101',i1_quantity='1',i1_price='300.10',i1_kind='custom',i1_unit='cm',i1_length='145')
+    data=order_data(mode='delivery',delivery_fee='20',delivery_address='Dubai, unit 1',item_count='2',i0_kind='custom',i1_code='FL-101',i1_quantity='1',i1_price='300.10',i1_kind='custom',i1_unit='cm',i1_length='145')
     assert post('/orders/new',**data).status_code==302
     assert read(env,'SELECT total FROM orders')[0][0]==119560
     assert len(read(env,'SELECT * FROM items'))==2
     assert post('/orders/1/delivery',mode='delivery',shipping_status='out',courier='Courier',delivery_address='Dubai',due_date='2030-01-20').status_code==400
     for stage in ['cutting','sewing','finishing','quality','ready']:
+        assert post('/orders/1/items/1',**item_data(stage)).status_code==302
         assert post('/orders/1/items/2',**item_data(stage,unit='cm',length='145')).status_code==302
     assert post('/orders/1/delivery',mode='delivery',shipping_status='out',courier='',delivery_address='Dubai',due_date='2030-01-20').status_code==400
     assert post('/orders/1/delivery',mode='delivery',shipping_status='out',courier='Courier',tracking='TRACK-1',delivery_address='Dubai',due_date='2030-01-20').status_code==302

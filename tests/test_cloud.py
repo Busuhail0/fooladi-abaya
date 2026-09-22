@@ -57,7 +57,7 @@ class R2:
 def cloud_env(tmp_path,monkeypatch):
     path=tmp_path/'fooladi.sqlite3'
     with sqlite3.connect(path) as conn:
-        conn.executescript((Path(__file__).parents[1]/'migrations/0001_initial.sql').read_text())
+        conn.executescript('\n'.join(m.read_text() for m in sorted((Path(__file__).parents[1]/'migrations').glob('*.sql'))))
     d1=D1(path);r2=R2()
     env=SimpleNamespace(DB=d1,PHOTOS=r2,SESSION_SECRET='s'*64,SETUP_TOKEN='t'*64,MAINTENANCE='0')
     monkeypatch.setattr(application,'D1Connection',lambda binding:cloud_storage.D1Connection(binding,sync=lambda x:x,array=lambda x:x))
@@ -116,7 +116,7 @@ def test_cloud_backup_has_consistent_records_and_private_photos(cloud_env):
     assert response.status_code==200
     with zipfile.ZipFile(io.BytesIO(response.data)) as z:
         result=json.loads(z.read('database.json'))
-        assert result['format']=='fooladi-cloud-v1'
+        assert result['format']=='fooladi-cloud-v2'
         assert result['tables']['orders'][0]['total']==87550
         image=result['tables']['models'][0]['photo']
         assert z.read('photos/'+image)==env.PHOTOS.files['models/'+image]
@@ -133,7 +133,7 @@ def test_cloud_dashboard_queries_do_not_grow_per_order(cloud_env):
     assert env.DB.queries<=4
 
 def test_claiming_admin_requires_owner_token(tmp_path,monkeypatch):
-    with sqlite3.connect(tmp_path/'empty.db') as db:db.executescript((Path(__file__).parents[1]/'migrations/0001_initial.sql').read_text())
+    with sqlite3.connect(tmp_path/'empty.db') as db:db.executescript('\n'.join(m.read_text() for m in sorted((Path(__file__).parents[1]/'migrations').glob('*.sql'))))
     binding=SimpleNamespace(DB=D1(tmp_path/'empty.db'),SESSION_SECRET='s'*64,SETUP_TOKEN='t'*64,MAINTENANCE='0')
     monkeypatch.setattr(application,'D1Connection',lambda b:cloud_storage.D1Connection(b,sync=lambda x:x,array=lambda x:x))
     app=application.create_app(test_config={'TESTING':True},cloud=True)
@@ -189,7 +189,7 @@ def test_cloud_backup_restores_into_empty_database(cloud_env):
     result=subprocess.run([sys.executable,str(root/'scripts/prepare_restore.py'),str(backup),'--output',str(output)],capture_output=True,text=True)
     assert result.returncode==0,result.stderr
     with sqlite3.connect(':memory:') as db:
-        db.executescript((root/'migrations/0001_initial.sql').read_text())
+        db.executescript('\n'.join(m.read_text() for m in sorted((root/'migrations').glob('*.sql'))))
         db.executescript((output/'database.sql').read_text())
         assert db.execute('SELECT total FROM orders').fetchone()[0]==87550
         assert db.execute('SELECT COUNT(*) FROM payments').fetchone()[0]>=1

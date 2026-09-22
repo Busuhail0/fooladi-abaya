@@ -1,6 +1,39 @@
 'use strict';
 const ar=document.documentElement.lang==='ar';
 const say=(a,e)=>ar?a:e;
+document.querySelectorAll('.catalog-form').forEach(form=>{
+  const input=form.querySelector('[data-catalog-code]'),photo=form.querySelector('[data-catalog-photo]'),message=form.querySelector('[data-catalog-result]'),placeholder=form.querySelector('[data-catalog-placeholder]');
+  let timer,version=0;
+  async function lookup(){
+    const current=++version;
+    photo.classList.add('hidden');photo.removeAttribute('src');placeholder.classList.remove('hidden');
+    input.setCustomValidity(say('اختر موديل محفوظاً','Choose a saved model'));
+    message.textContent=say('جارٍ عرض الموديل…','Loading model…');
+    try{
+      const response=await fetch('/api/model?code='+encodeURIComponent(input.value.trim()));
+      if(!response.ok)throw new Error('Model not found');
+      const model=await response.json();if(current!==version)return;
+      input.setCustomValidity('');message.textContent=model.title;
+      form.querySelector('[data-catalog-price]').value=(model.price/100).toFixed(2);
+      if(model.photo_url){photo.src=model.photo_url;photo.classList.remove('hidden');placeholder.classList.add('hidden');}
+    }catch(error){if(current===version){message.textContent=say('أضف الموديل في الكتالوج أو تحقق من الاتصال.','Add the model to the catalogue or check your connection.');}}
+  }
+  input.addEventListener('input',()=>{version++;clearTimeout(timer);input.setCustomValidity(say('انتظر التحقق من الموديل','Wait for model lookup'));timer=setTimeout(lookup,250);});
+  input.addEventListener('change',()=>{clearTimeout(timer);lookup();});
+});
+document.querySelectorAll('[data-ready-sale]').forEach(form=>{
+  const field=name=>form.elements.namedItem(name),fils=v=>Math.round(Number(v||0)*100),fmt=v=>new Intl.NumberFormat('en-AE',{minimumFractionDigits:2,maximumFractionDigits:2}).format(v/100);
+  function totals(){
+    const price=Number(form.dataset.price),delivery=field('mode').value==='delivery',discount=fils(field('discount').value),deposit=fils(field('deposit').value),fee=delivery?fils(field('delivery_fee').value):0,total=price-discount+fee;
+    form.querySelector('[data-ready-total]').textContent=fmt(total);
+    form.querySelector('[data-ready-balance]').textContent=fmt(total-deposit);
+    form.querySelector('[data-ready-delivery]').classList.toggle('hidden',!delivery);
+    field('delivery_address').required=delivery;field('delivery_fee').disabled=!delivery;
+    field('discount').setCustomValidity(discount>price?say('الخصم يتجاوز السعر','Discount exceeds price'):'');
+    field('deposit').setCustomValidity(deposit>total?say('الدفعة تتجاوز الإجمالي','Payment exceeds total'):'');
+  }
+  form.addEventListener('input',totals);form.addEventListener('change',totals);totals();
+});
 document.querySelectorAll('[data-print]').forEach(el=>el.addEventListener('click',()=>window.print()));
 document.querySelectorAll('[data-back]').forEach(el=>el.addEventListener('click',()=>history.back()));
 document.querySelectorAll('form[data-confirm]').forEach(form=>form.addEventListener('submit',e=>{if(!confirm(form.dataset.confirm))e.preventDefault();}));
@@ -61,7 +94,6 @@ if(orderForm){
     input.addEventListener('change',()=>{clearTimeout(timer);lookup();});
     item.querySelector('.copy-measurements').addEventListener('click',()=>copyMeasurements(item));
     item.querySelector('.remove-item').addEventListener('click',()=>{if(items.children.length>1){item.remove();renumber();totals();}});
-    item.querySelector('.kind-input').addEventListener('change',e=>{item.querySelector('.measure-details').open=e.target.value==='custom';});
     totals();
   }
   customerSelect.addEventListener('change',()=>{
