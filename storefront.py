@@ -111,6 +111,10 @@ def register_storefront(app, *, db, transaction, setting, put_setting, t, now, t
         if not model['photo']: abort(404)
         return photo(model['photo'])
 
+    @store.get('/about')
+    def about():
+        return render_template('store_about.html')
+
     @store.get('/media/ready/<sid>')
     def ready_photo(sid):
         item = selection('stock', sid)

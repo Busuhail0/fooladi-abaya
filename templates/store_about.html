@@ -1,0 +1,34 @@
+{% extends 'store_base.html' %}
+{% set page_title=t('من نحن — حكاية فولادي','About us — The Fooladi story') %}
+{% block content %}
+<section class="about-page">
+  <header class="about-heading">
+    <div><span class="eyebrow">FOOLADI / {{ t('حكايتنا','OUR STORY') }}</span><h1>{{ t('أختان، وحلمٌ يستحق الاستمرار.','Two sisters. A dream worth carrying forward.') }}</h1><p>{{ t('منذ 2011، نبني حكايتنا بالعمل والمثابرة، ونحافظ عليها بجودة الخدمة وثقتكم.','Since 2011, hard work and perseverance have shaped our story. Quality of service and your trust keep it growing.') }}</p></div>
+    <div class="about-year"><small>{{ t('البداية','ESTABLISHED') }}</small><strong>2011</strong><span>{{ t('فولادي للعباية','FOOLADI ABAYA') }}</span></div>
+  </header>
+  <article class="about-story">
+  {% if lang=='en' %}
+    <h2>Behind Fooladi is a story of two sisters.</h2>
+    <p>In 2011, two sisters began building a business that reflected their values: patience, care and respect for every customer who placed her trust in them. From that beginning, Fooladi Abaya became a shared commitment, renewed through their work, day after day.</p>
+    <p>The journey brought difficulties that tested their resolve. Keeping the business going took hard work, and preserving the quality of its service took just as much determination. Through those challenges, the sisters supported one another and continued to give their work the attention it deserved.</p>
+    <p>Each understood what the other carried: the responsibility of continuing, the effort behind the details and the hope that made that effort worthwhile. Their partnership gave them strength to keep moving forward, with the care they wanted every customer to experience.</p>
+    <h2>Perseverance became part of who we are.</h2>
+    <p>For us, quality lives in the experience around every abaya: listening carefully, taking requests seriously and giving attention to the details that matter. These are the values the sisters worked to preserve, even when the road was difficult.</p>
+    <p>Today, 2011 remains our starting point and a reminder of the responsibility we carry. Every customer who chooses Fooladi gives us another reason to continue with care. Every expression of trust asks us to live up to it.</p>
+    <p>Our story is still being written. We carry it forward with the determination of two sisters who worked hard, stood together through difficulties and kept the quality of their service at the heart of their journey.</p>
+    <p class="about-closing">Fooladi Abaya. Two sisters, and the strength to keep going.</p>
+  {% else %}
+    <h2>وراء فولادي حكاية أختين.</h2>
+    <p>في عام 2011، بدأت أختان بناء عملٍ يشبههما؛ فيه صبر، وفيه عناية، وفيه احترام لكل متعاملة تمنحهما ثقتها. ومن تلك البداية، أصبحت «فولادي للعباية» مسؤولية مشتركة، تحملانها معًا وتجددان التزامهما بها كل يوم.</p>
+    <p>لم تكن الرحلة سهلة. مرّت بها صعوبات اختبرت عزيمتهما، وكان الحفاظ على الاستمرار يحتاج إلى جهد، والحفاظ على جودة الخدمة يحتاج إلى إصرار أكبر. ومع كل تحدٍّ، كانت كل واحدة منهما سندًا للأخرى؛ تتقاسمان المسؤولية، وتواصلان العمل، وتمنحان التفاصيل ما تستحقه من اهتمام.</p>
+    <p>كانت كل واحدة تعرف ما تحمله أختها: تعب العمل، وثقل المسؤولية، والأمل الذي يجعل المحاولة تستحق. وبينهما، كانت المثابرة تأخذ شكلًا بسيطًا وصادقًا؛ أن تواصلا، وأن تبذلا ما تستطيعان، وأن تحافظا على الخدمة التي تريدان أن تجدها كل متعاملة لدى فولادي.</p>
+    <h2>ومع السنوات، صارت المثابرة جزءًا من هويتنا.</h2>
+    <p>نرى الجودة في تجربة المتعاملة بكل تفاصيلها؛ في الإصغاء إلى رغبتها، والاهتمام بطلبها، والعناية بما يهمها في عبايتها. هذه القيم هي ما عملت الأختان على الحفاظ عليه، حتى حين كان الطريق صعبًا.</p>
+    <p>اليوم، نحمل عام 2011 كتاريخ للبداية، ونحمل معه مسؤولية متجددة. كل متعاملة تختار فولادي تمنحنا سببًا إضافيًا للاستمرار بعناية، وكل ثقة تُمنح لنا تستحق أن نعمل لنكون أهلًا لها.</p>
+    <p>وحكايتنا ما زالت تُكتب. نكملها بعزيمة أختين عملتا بجد، ووقفتا معًا أمام الصعوبات، وحافظتا على جودة الخدمة في قلب الرحلة. ومن هذا الإصرار، تستمد فولادي قوتها لتواصل.</p>
+    <p class="about-closing">فولادي للعباية… حكاية أختين، وقوة الاستمرار.</p>
+  {% endif %}
+  <div class="about-actions"><a class="button" href="{{ url_for('store.catalogue') }}#collection">{{ t('اكتشفي مجموعتنا','Explore our collection') }}</a><a class="button secondary" href="{{ url_for('store.track') }}">{{ t('تابع طلبك','Track your request') }}</a></div>
+  </article>
+</section>
+{% endblock %}
