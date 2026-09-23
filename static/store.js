@@ -32,5 +32,5 @@ if (customerForm) {
     submit.disabled = initiallyDisabled;
     submit.textContent = initialLabel;
   });
-  document.querySelector('.form-errors')?.focus();
 }
+document.querySelector('.form-errors')?.focus();

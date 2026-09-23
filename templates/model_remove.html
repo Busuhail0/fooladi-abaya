@@ -1,0 +1,19 @@
+{% extends 'base.html' %}
+{% from 'macros.html' import token with context %}
+{% block content %}
+<div class="page-heading"><div><a class="text-link" href="{{ url_for('models') }}">{{ t('العودة للكتالوج','Back to catalogue') }}</a><h1>{{ t('إيقاف عرض الموديل','Hide model') if used else t('حذف الموديل','Delete model') }}</h1></div></div>
+<section class="panel padded model-remove-panel">
+  {% if model.photo %}<img class="model-remove-photo" src="{{ url_for('photo',name=model.photo) }}" alt="{{ model.title }}">{% endif %}
+  <span class="eyebrow">{{ model.code }}</span><h2>{{ model.title }}</h2><p>{{ model.price|money }} AED</p>
+  {% if used %}
+  <p>{{ t('هذا الموديل مرتبط بطلب أو قطعة جاهزة، لذلك نحافظ على سجله. إيقافه يخفيه عن المتعاملين ويمنع استخدامه في طلبات جديدة. الطلبات والفواتير السابقة تبقى محفوظة.','This model is linked to a request, order or ready piece. Hiding it removes it from the customer page and new orders while preserving existing orders and invoices.') }}</p>
+  {% else %}
+  <p>{{ t('سيُحذف هذا الموديل من الكتالوج وصفحة المتعاملين. لا توجد طلبات أو قطع جاهزة مرتبطة به.','This model will be deleted from the catalogue and customer page. It has no linked requests, orders or ready pieces.') }}</p>
+  {% endif %}
+  <form method="post">
+    {{ token() }}<input name="action" type="hidden" value="{{ 'archive' if used else 'delete' }}">
+    <label class="check"><input name="confirmed" type="checkbox" value="yes" required>{{ t('أؤكد إيقاف عرض هذا الموديل.','I confirm hiding this model.') if used else t('أؤكد حذف هذا الموديل نهائيًا.','I confirm permanently deleting this model.') }}</label>
+    <div class="actions"><button class="btn danger">{{ t('إيقاف العرض','Hide model') if used else t('حذف نهائي','Delete permanently') }}</button><a class="btn secondary" href="{{ url_for('models') }}">{{ t('إلغاء','Cancel') }}</a></div>
+  </form>
+</section>
+{% endblock %}

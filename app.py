@@ -384,7 +384,8 @@ def create_app(data_dir=None, test_config=None, cloud=False):
                     if mid:
                         old=db().execute('SELECT * FROM models WHERE id=?',(mid,)).fetchone()
                         if not old: abort(404)
-                        db().execute('UPDATE models SET code=?,title=?,price=?,photo=?,description=?,active=? WHERE id=?',(code,title,price,photo or old['photo'],description,1 if request.form.get('active') else 0,mid))
+                        selected_photo = photo or ('' if request.form.get('remove_photo') else old['photo'])
+                        db().execute('UPDATE models SET code=?,title=?,price=?,photo=?,description=?,active=? WHERE id=?',(code,title,price,selected_photo,description,1 if request.form.get('active') else 0,mid))
                     else:
                         db().execute('INSERT INTO models(code,title,price,photo,description) VALUES (?,?,?,?,?)',(code,title,price,photo or '',description))
             except sqlite3.IntegrityError:
@@ -393,6 +394,35 @@ def create_app(data_dir=None, test_config=None, cloud=False):
             return redirect(url_for('models'))
         edit=db().execute('SELECT * FROM models WHERE id=?',(request.args.get('edit'),)).fetchone()
         return render_template('models.html',models=db().execute('SELECT * FROM models ORDER BY id DESC').fetchall(),edit=edit)
+
+    @app.route('/models/<int:mid>/remove',methods=['GET','POST'])
+    def remove_model(mid):
+        def review():
+            model = db().execute('SELECT * FROM models WHERE id=?',(mid,)).fetchone()
+            if not model: abort(404)
+            used = any(db().execute(sql,(mid,)).fetchone() for sql in (
+                'SELECT 1 FROM items WHERE model_id=? LIMIT 1',
+                'SELECT 1 FROM ready_stock WHERE model_id=? LIMIT 1',
+                'SELECT 1 FROM customer_requests WHERE model_id=? LIMIT 1'))
+            return model,used
+        if request.method == 'POST':
+            if request.form.get('confirmed') != 'yes':
+                raise ValidationError(t('أكد الإجراء على الموديل المحدد.', 'Confirm the action on this model.'))
+            with transaction():
+                model,used = review()
+                action = 'archive' if used else 'delete'
+                if request.form.get('action') != action:
+                    raise ValidationError(t('تغيّر ارتباط الموديل بالطلبات. افتح صفحة الحذف مجددًا.', 'The model references changed. Reopen the removal page.'))
+                if used:
+                    db().execute('UPDATE models SET active=0 WHERE id=?',(mid,))
+                    db().execute('UPDATE storefront_products SET published=0 WHERE model_id=?',(mid,))
+                else:
+                    db().execute('DELETE FROM storefront_products WHERE model_id=?',(mid,))
+                    db().execute('DELETE FROM models WHERE id=?',(mid,))
+            flash(t('تم إيقاف عرض الموديل مع الاحتفاظ بسجل الطلبات.', 'Model hidden; order history preserved.') if used else t('تم حذف الموديل من الكتالوج.', 'Model deleted from the catalogue.'),'success')
+            return redirect(url_for('models'))
+        model,used = review()
+        return render_template('model_remove.html',model=model,used=used)
 
     @app.get('/photos/<name>')
     def photo(name):
@@ -640,7 +670,7 @@ def create_app(data_dir=None, test_config=None, cloud=False):
             snapshot.unlink(missing_ok=True)
 
     register_ready_routes(app,db=db,transaction=transaction,get_order=get_order,event=event,t=t,label=label,now=now,today=today,money=money,text_input=text_input,ValidationError=ValidationError,methods=METHODS)
-    register_storefront(app,db=db,transaction=transaction,setting=setting,put_setting=put_setting,t=t,now=now,today=today,text_input=text_input,read_measures=read_measures,money=money,event=event,ValidationError=ValidationError,photo=photo)
+    register_storefront(app,db=db,transaction=transaction,setting=setting,put_setting=put_setting,t=t,now=now,today=today,text_input=text_input,read_measures=read_measures,money=money,event=event,ValidationError=ValidationError,photo=photo,get_order=get_order,stages=STAGES)
     return app
 
 if __name__=='__main__':

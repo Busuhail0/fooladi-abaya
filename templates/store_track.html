@@ -1,0 +1,18 @@
+{% extends 'store_base.html' %}
+{% set page_title=t('تابع طلبك','Track your request') %}
+{% block content %}
+<section class="tracking-entry request-panel">
+  <span class="eyebrow">FOOLADI / {{ t('متابعة الطلب','ORDER TRACKING') }}</span>
+  <h1>{{ t('تابع طلبك','Track your request') }}</h1>
+  <p>{{ t('أدخل رقم المتابعة الذي ظهر بعد إرسال الطلب، ورقم الهاتف المسجّل معه.','Enter the reference shown after submitting your request and the phone number used for it.') }}</p>
+  {% if request.args.get('expired') %}<p class="notice">{{ t('أدخل رقم الطلب والهاتف مجددًا لعرض آخر تحديث.','Enter the reference and phone again to see the latest update.') }}</p>{% endif %}
+  {% if error %}<div class="form-errors" role="alert" tabindex="-1">{{ error }}</div>{% endif %}
+  <form method="post">
+    <input type="hidden" name="csrf" value="{{ csrf }}">
+    <label>{{ t('رقم متابعة الطلب','Request reference') }}<input name="reference" required maxlength="12" dir="ltr" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="WEB-A1B2C3D4" value="{{ form.get('reference','') }}"></label>
+    <label>{{ t('الهاتف المسجّل في الطلب','Phone number on the request') }}<input name="phone" type="tel" inputmode="tel" required maxlength="40" dir="ltr" autocomplete="tel" placeholder="050 000 0000" value="{{ form.get('phone','') }}"></label>
+    <button class="button submit-button">{{ t('عرض حالة الطلب','View request status') }}</button>
+  </form>
+  <p class="form-note">{{ t('رقم المتابعة يبدأ بـ WEB-. إذا لم تحصل عليه بعد الإرسال، تواصل مع المحل.','Your reference starts with WEB-. If you did not receive one after submitting, contact the store.') }}</p>
+</section>
+{% endblock %}

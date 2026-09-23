@@ -38,11 +38,28 @@ CREATE TABLE IF NOT EXISTS customer_requests (
 CREATE INDEX IF NOT EXISTS customer_requests_created ON customer_requests(created_epoch);
 CREATE INDEX IF NOT EXISTS customer_requests_rate ON customer_requests(ip_hash,created_epoch);
 CREATE INDEX IF NOT EXISTS customer_requests_status ON customer_requests(status,created_at);
+CREATE TABLE IF NOT EXISTS storefront_tracking_attempts (
+ ip_hash TEXT NOT NULL, lookup_hash TEXT NOT NULL, stamp INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS storefront_tracking_ip ON storefront_tracking_attempts(ip_hash,stamp);
+CREATE INDEX IF NOT EXISTS storefront_tracking_lookup ON storefront_tracking_attempts(lookup_hash,stamp);
 """
 
 
+def canonical_phone(value):
+    """Match UAE local/international forms and Arabic digits, never suffixes."""
+    number = str(value).translate(str.maketrans('٠١٢٣٤٥٦٧٨٩۰۱۲۳۴۵۶۷۸۹', '01234567890123456789'))
+    number = re.sub(r'[\s()\-\u200e\u200f\u061c]', '', number)
+    if number.startswith('00'): number = '+' + number[2:]
+    if not re.fullmatch(r'\+?[0-9]{7,15}', number): return ''
+    number = number.lstrip('+')
+    if re.fullmatch(r'05[0-9]{8}', number): number = '971' + number[1:]
+    return number
+
+
 def register_storefront(app, *, db, transaction, setting, put_setting, t, now, today,
-                        text_input, read_measures, money, event, ValidationError, photo):
+                        text_input, read_measures, money, event, ValidationError, photo,
+                        get_order, stages):
     store = Blueprint('store', __name__, url_prefix='/shop')
     states = [('new','جديد','New'), ('contacted','تم التواصل','Contacted'),
               ('confirmed','مؤكد','Confirmed'), ('closed','مغلق','Closed')]
@@ -100,14 +117,84 @@ def register_storefront(app, *, db, transaction, setting, put_setting, t, now, t
         if not item['photo']: abort(404)
         return photo(item['photo'])
 
-    def ip_fingerprint():
+    def tracking_digest(value):
         if app.config['CLOUD']:
             secret = str(getattr(request.environ['workers.env'], 'SESSION_SECRET', ''))
-            address = request.headers.get('CF-Connecting-IP') or request.remote_addr or 'unknown'
         else:
             secret = app.config['SECRET_KEY']
-            address = request.remote_addr or 'unknown'
-        return hmac.new(secret.encode(), address.encode(), hashlib.sha256).hexdigest()
+        return hmac.new(secret.encode(), value.encode(), hashlib.sha256).hexdigest()
+
+    def ip_fingerprint():
+        address = (request.headers.get('CF-Connecting-IP') if app.config['CLOUD'] else None) or request.remote_addr or 'unknown'
+        return tracking_digest(address)
+
+    def tracking_grant(row):
+        return tracking_digest('tracking-grant:' + row['id'] + ':' + canonical_phone(row['customer_phone']))
+
+    @store.route('/track', methods=['GET','POST'])
+    def track():
+        error = ''
+        status = 200
+        form = request.form if request.method == 'POST' else {}
+        if request.method == 'POST':
+            reference = str(form.get('reference', ''))[:80].strip().upper()
+            if reference.startswith('WEB-'): reference = reference[4:]
+            phone_number = canonical_phone(str(form.get('phone', ''))[:80])
+            fingerprint = ip_fingerprint()
+            lookup_hash = tracking_digest('tracking-lookup:' + reference + ':' + phone_number)
+            stamp = int(time.time())
+            match = None
+            with transaction():
+                count = db().execute('SELECT COUNT(*) FROM storefront_tracking_attempts WHERE ip_hash=? AND stamp>?', (fingerprint,stamp-900)).fetchone()[0]
+                targeted = db().execute('SELECT COUNT(*) FROM storefront_tracking_attempts WHERE lookup_hash=? AND stamp>?', (lookup_hash,stamp-900)).fetchone()[0]
+                if count >= 20 or targeted >= 8:
+                    abort(429, t('محاولات كثيرة. انتظر 15 دقيقة ثم حاول مجددًا أو تواصل مع المحل.', 'Too many attempts. Wait 15 minutes or contact the store.'))
+                if re.fullmatch(r'[0-9A-F]{8}', reference) and phone_number:
+                    # A random reference prefix, never a sequential order ID.
+                    # Fail closed if both prefix and phone have a rare collision.
+                    rows = db().execute('SELECT id,customer_phone FROM customer_requests WHERE id>=? AND id<?',
+                                        (reference.lower(), reference.lower()+'g')).fetchall()
+                    matches = [row for row in rows if secrets.compare_digest(canonical_phone(row['customer_phone']), phone_number)]
+                    if len(matches) == 1: match = matches[0]
+                db().execute('DELETE FROM storefront_tracking_attempts WHERE stamp<=?', (stamp-900,))
+                db().execute('INSERT INTO storefront_tracking_attempts(ip_hash,lookup_hash,stamp) VALUES (?,?,?)', (fingerprint,lookup_hash,stamp))
+            if match:
+                grants = {key:value for key,value in session.get('store_tracking', {}).items() if value['expires'] > stamp}
+                grants = dict(list(grants.items())[-4:])
+                grants[match['id']] = {'expires':stamp+900, 'proof':tracking_grant(match)}
+                session['store_tracking'] = grants
+                return redirect(url_for('store.receipt',rid=match['id']),code=303)
+            error = t('لم نتمكن من مطابقة رقم الطلب والهاتف. راجعهما أو تواصل مع المحل.', 'We could not match that reference and phone number. Check both or contact the store.')
+            status = 400
+        return render_template('store_track.html', form=form, error=error), status
+
+    def public_progress(row):
+        journey = [('new',t('استلام الطلب','Request received')), ('confirmed',t('تأكيد الطلب','Request confirmed'))]
+        if row['kind'] == 'custom': journey += [(code,t(ar,en)) for code,ar,en in stages if code != 'received']
+        else: journey += [('ready',t('جاهزة للتسليم','Ready for handover'))]
+        code = row['status']
+        due_date = ''
+        mode = row['mode']
+        if row['order_id']:
+            # Reuse staff status logic, but pass only safe fields to the template.
+            order = get_order(row['order_id'])
+            code = 'confirmed' if order['status'] == 'received' else order['status']
+            due_date = order['due_date']
+            mode = order['mode']
+        if mode == 'delivery': journey += [('out',t('خرجت للتوصيل','Out for delivery'))]
+        journey += [('delivered',t('تم التسليم','Delivered'))]
+        if code == 'contacted':
+            current = 0
+            title = t('تم التواصل — بانتظار التأكيد','Contacted — awaiting confirmation')
+        elif code in ('closed','cancelled','returned'):
+            current = -1
+            title = {'closed':t('الطلب مغلق','Request closed'), 'cancelled':t('الطلب ملغي','Order cancelled'), 'returned':t('تم إرجاع الطلب','Order returned')}[code]
+            journey = []
+        else:
+            current = next((i for i,(key,_) in enumerate(journey) if key == code),0)
+            title = journey[current][1]
+        return dict(code=code,title=title,due_date=due_date,
+                    steps=[dict(title=label,state='done' if i<current or code=='delivered' else 'current' if i==current else 'next') for i,(_,label) in enumerate(journey)])
 
     def detail(kind, identifier):
         item = selection(kind, identifier)
@@ -195,8 +282,15 @@ def register_storefront(app, *, db, transaction, setting, put_setting, t, now, t
     @store.get('/request/<rid>')
     def receipt(rid):
         row = db().execute('SELECT * FROM customer_requests WHERE id=?', (rid,)).fetchone()
-        if not row or not secrets.compare_digest(row['browser_key'], session.get('store_browser','')): abort(404)
-        return render_template('store_receipt.html', enquiry=dict(row))
+        if not row: abort(404)
+        owner = secrets.compare_digest(row['browser_key'], session.get('store_browser',''))
+        grant = session.get('store_tracking',{}).get(rid)
+        if not owner:
+            if not grant: abort(404)
+            if grant['expires'] <= time.time() or not secrets.compare_digest(grant['proof'],tracking_grant(row)):
+                return redirect(url_for('store.track',expired=1))
+        enquiry = {key:row[key] for key in ('id','model_title','kind','quantity','unit_price','status')}
+        return render_template('store_receipt.html', enquiry=enquiry, progress=public_progress(row))
 
     app.register_blueprint(store)
 

@@ -94,6 +94,12 @@ print(json.dumps(statements))
   const rid=sent.location.split('/').pop();
   cookie='';
   if((await request(sent.location)).status!==404)throw new Error('Receipt exposed to another visitor');
+  const trackingPage=await request('/shop/track');
+  const tracking=await request('/shop/track',{csrf:csrf(trackingPage.body),reference:'WEB-'+rid.slice(0,8).toUpperCase(),phone:'٠٥٠ ١٢٣ ٤٥٦٧'});
+  if(tracking.status!==303 || tracking.location!==sent.location)throw new Error('Cross-device tracking failed');
+  if(!(await request(tracking.location)).body.includes('data-progress="new"'))throw new Error('New request status missing');
+  const trackingCookie=cookie;
+  cookie='';
   const ownerLogin=await request('/login');
   if((await request('/login',{csrf:csrf(ownerLogin.body),username:'testowner',password:'ChangedTestPassword456!'})).status!==302)throw new Error('Owner login failed');
   const review=await request('/customer-requests/'+rid);
@@ -103,6 +109,23 @@ print(json.dumps(statements))
   if(enquiry.status!=='confirmed' || !enquiry.order_id)throw new Error('Confirmed request did not persist');
   const paid=await db.prepare('SELECT COUNT(*) AS n FROM payments WHERE order_id=?').bind(enquiry.order_id).first();
   if(paid.n!==0)throw new Error('An enquiry incorrectly created a payment');
-  console.log('Workers runtime: public catalogue, private boundaries, enquiry, receipt and staff conversion passed.');
+  const item=await db.prepare('SELECT id FROM items WHERE order_id=?').bind(enquiry.order_id).first();
+  const orderPage=await request(confirmed.location);
+  if((await request('/orders/'+enquiry.order_id+'/items/'+item.id,{csrf:csrf(orderPage.body),stage:'cutting',unit:'inch',length:'56',bust:'42',notes:'PRIVATE-WORKSHOP'})).status!==302)throw new Error('Stage update failed');
+  const ownerCookie=cookie;
+  cookie=trackingCookie;
+  const progress=await request(tracking.location);
+  if(!progress.body.includes('data-progress="cutting"') || progress.body.includes('PRIVATE-WORKSHOP'))throw new Error('Public progress or privacy failed');
+  cookie=ownerCookie;
+  const usedModel=await request('/models/1/remove');
+  if((await request('/models/1/remove',{csrf:csrf(usedModel.body),action:'archive',confirmed:'yes'})).status!==302)throw new Error('Used model archive failed');
+  if((await db.prepare('SELECT active FROM models WHERE id=1').first()).active!==0)throw new Error('Model still active');
+  if(!(await db.prepare('SELECT id FROM orders WHERE id=?').bind(enquiry.order_id).first()))throw new Error('Archive removed order history');
+  const addModel=await request('/models');
+  if((await request('/models',{csrf:csrf(addModel.body),code:'DELETE-ME',title:'Unused model',price:'100'})).status!==302)throw new Error('Unused model setup failed');
+  const unusedModel=await request('/models/2/remove');
+  if((await request('/models/2/remove',{csrf:csrf(unusedModel.body),action:'delete',confirmed:'yes'})).status!==302)throw new Error('Unused model deletion failed');
+  if(await db.prepare('SELECT id FROM models WHERE id=2').first())throw new Error('Unused model still exists');
+  console.log('Workers runtime: tracking, live production stages, private boundaries and safe catalogue removal passed.');
 
 } finally {await mf.dispose();}
