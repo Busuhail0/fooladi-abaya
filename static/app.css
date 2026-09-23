@@ -12,3 +12,6 @@
 @media(max-width:700px){.workspace-paths{grid-template-columns:1fr;gap:12px}.stock-create-layout{grid-template-columns:1fr}.stock-create-layout .detail-photo{max-width:160px;margin:auto}.ready-table{font-size:13px}}
 
 .stock-create-layout .detail-photo{height:auto;min-height:160px}
+
+/* Customer page administration */
+.store-admin-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px}.store-admin-preview{display:flex;gap:18px;align-items:center;margin-bottom:18px}.store-admin-preview img{width:80px;height:110px;object-fit:contain;border-radius:6px;background:#eee8df}.enquiry-details{display:grid;grid-template-columns:1fr 1fr;gap:16px}.enquiry-details>div{padding-bottom:10px;border-bottom:1px solid #ddd}.enquiry-details dd{margin:6px 0 0;white-space:pre-wrap;overflow-wrap:anywhere}.enquiry-details dt{color:#766142;font-size:12px}@media(max-width:700px){.store-admin-grid,.enquiry-details{grid-template-columns:1fr}}

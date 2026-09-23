@@ -116,7 +116,7 @@ def test_cloud_backup_has_consistent_records_and_private_photos(cloud_env):
     assert response.status_code==200
     with zipfile.ZipFile(io.BytesIO(response.data)) as z:
         result=json.loads(z.read('database.json'))
-        assert result['format']=='fooladi-cloud-v2'
+        assert result['format']=='fooladi-cloud-v3'
         assert result['tables']['orders'][0]['total']==87550
         image=result['tables']['models'][0]['photo']
         assert z.read('photos/'+image)==env.PHOTOS.files['models/'+image]

@@ -21,7 +21,7 @@ try:
 except ImportError:
     JS_NULL=object()  # Native CPython tests do not run in Pyodide.
 
-TABLES=('settings','customers','models','orders','items','payments','events','login_attempts','order_numbers','ready_stock','ready_sales')
+TABLES=('settings','customers','models','orders','items','payments','events','login_attempts','order_numbers','ready_stock','ready_sales','storefront_products','customer_requests')
 PHOTO_NAME=re.compile(r'^[0-9a-f]{32}\.jpg$')
 
 class CloudBackendError(Exception):
@@ -173,9 +173,9 @@ class WorkerSessionInterface(SecureCookieSessionInterface):
 
 def build_backup(connection,photos,max_bytes=20*1024*1024):
     tables=connection.snapshot()
-    names=sorted({row['photo'] for table in ('models','items','ready_stock') for row in tables[table] if row.get('photo')})
+    names=sorted({row['photo'] for table in ('models','items','ready_stock','customer_requests') for row in tables[table] if row.get('photo')})
     if len(names)>100:raise CloudBackendError('Use administrative export for more than 100 photos.')
-    raw=json.dumps({'format':'fooladi-cloud-v2','tables':tables},ensure_ascii=False).encode('utf-8')
+    raw=json.dumps({'format':'fooladi-cloud-v3','tables':tables},ensure_ascii=False).encode('utf-8')
     if len(raw)>max_bytes:raise CloudBackendError('Use administrative export for a large backup.')
     total=len(raw);out=io.BytesIO()
     with zipfile.ZipFile(out,'w',zipfile.ZIP_DEFLATED) as z:

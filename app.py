@@ -20,6 +20,7 @@ from PIL import Image, ImageOps, UnidentifiedImageError
 from password_security import CLOUD_PASSWORD_METHOD, check_password_hash, generate_password_hash
 from cloud_storage import CloudBackendError, ConcurrentWrite, D1Connection, R2Photos, WorkerSessionInterface
 from ready_stock import READY_SCHEMA, register_ready_routes
+from storefront import STORE_SCHEMA, register_storefront
 
 ROOT = Path(__file__).resolve().parent
 STAGES = [('received', 'استلام الطلب', 'Received'), ('cutting', 'القص', 'Cutting'), ('sewing', 'الخياطة', 'Sewing'), ('finishing', 'التطريز والتشطيب', 'Finishing'), ('quality', 'فحص الجودة', 'Quality check'), ('ready', 'جاهزة للتسليم', 'Ready')]
@@ -125,7 +126,7 @@ def create_app(data_dir=None, test_config=None, cloud=False):
     if not cloud:
         with app.app_context():
             db().execute('PRAGMA journal_mode=WAL')
-            db().executescript(SCHEMA + READY_SCHEMA)
+            db().executescript(SCHEMA + READY_SCHEMA + STORE_SCHEMA)
             db().commit()
 
     @contextmanager
@@ -206,6 +207,9 @@ def create_app(data_dir=None, test_config=None, cloud=False):
         if request.endpoint in ('static','language'):
             return
         configured=bool(setting('password_hash'))
+        if request.blueprint == 'store':
+            if not configured: abort(404)
+            return
         if not configured and request.endpoint != 'setup':
             return redirect(url_for('setup'))
         if configured and request.endpoint == 'setup':
@@ -236,7 +240,7 @@ def create_app(data_dir=None, test_config=None, cloud=False):
 
     @app.errorhandler(ValidationError)
     def invalid(error):
-        return render_template('error.html',message=str(error)),400
+        return render_template('store_error.html' if request.blueprint=='store' else 'error.html',message=str(error)),400
 
     @app.errorhandler(ConcurrentWrite)
     def concurrent_write(_error):
@@ -256,8 +260,9 @@ def create_app(data_dir=None, test_config=None, cloud=False):
 
     @app.errorhandler(400)
     @app.errorhandler(404)
+    @app.errorhandler(429)
     def http_error(error):
-        return render_template('error.html',message=error.description),error.code
+        return render_template('store_error.html' if request.blueprint=='store' else 'error.html',message=error.description),error.code
 
     @app.route('/language/<lang>',methods=['POST'])
     def language(lang):
@@ -635,6 +640,7 @@ def create_app(data_dir=None, test_config=None, cloud=False):
             snapshot.unlink(missing_ok=True)
 
     register_ready_routes(app,db=db,transaction=transaction,get_order=get_order,event=event,t=t,label=label,now=now,today=today,money=money,text_input=text_input,ValidationError=ValidationError,methods=METHODS)
+    register_storefront(app,db=db,transaction=transaction,setting=setting,put_setting=put_setting,t=t,now=now,today=today,text_input=text_input,read_measures=read_measures,money=money,event=event,ValidationError=ValidationError,photo=photo)
     return app
 
 if __name__=='__main__':

@@ -8,7 +8,7 @@
   <div class="nav-caption">{{ t('مساحة العمل','WORKSPACE') }}</div>
   <nav>
   <a href="{{ url_for('orders',kind='custom') }}" class="{{ 'active' if request.args.get('kind')=='custom' or request.endpoint=='new_order' else '' }}"><span class="nav-icon">✂</span>{{ t('طلبات التفصيل','Tailoring orders') }}</a>
-  {% for endpoint,icon,ar,en in [('dashboard','◈','نظرة عامة','Overview'),('ready_stock','◇','العبايات الجاهزة','Ready-to-wear'),('orders','▤','كل الطلبات والفواتير','All orders & invoices'),('workshop','✂','المشغل','Workshop'),('customers','♙','العملاء والمقاسات','Customers & sizes'),('models','◇','كتالوج الموديلات','Model catalogue'),('settings','⚙','الإعدادات والنسخ','Settings & backup')] %}
+  {% for endpoint,icon,ar,en in [('dashboard','◈','نظرة عامة','Overview'),('ready_stock','◇','العبايات الجاهزة','Ready-to-wear'),('orders','▤','كل الطلبات والفواتير','All orders & invoices'),('workshop','✂','المشغل','Workshop'),('customers','♙','العملاء والمقاسات','Customers & sizes'),('models','◇','كتالوج الموديلات','Model catalogue'),('customer_requests','▤','طلبات المتعاملين','Website requests'),('storefront_settings','◇','صفحة المتعاملين','Customer page'),('settings','⚙','الإعدادات والنسخ','Settings & backup')] %}
   <a href="{{ url_for(endpoint) }}" class="{{ 'active' if request.endpoint==endpoint and not request.args.get('kind') or endpoint=='ready_stock' and request.endpoint=='ready_detail' else '' }}"><span class="nav-icon">{{ icon }}</span>{{ t(ar,en) }}</a>
   {% endfor %}
   </nav>

@@ -1,7 +1,7 @@
 name: Validate Fooladi
 on:
   push:
-    branches: [main, fix/worker-password-runtime]
+    branches: [main, fix/worker-password-runtime, feature/customer-storefront]
   pull_request:
 permissions:
   contents: read
@@ -16,7 +16,7 @@ jobs:
       - run: python -m pip install -r requirements-local.txt 'pytest>=8,<10'
       - run: python scripts/bundle_assets.py
       - run: python -m pytest -q
-      - run: python -m compileall -q app.py ready_stock.py cloud_storage.py password_security.py worker.py bundled_assets.py
+      - run: python -m compileall -q storefront.py app.py ready_stock.py cloud_storage.py password_security.py worker.py bundled_assets.py
   worker-build:
     runs-on: ubuntu-latest
     timeout-minutes: 15

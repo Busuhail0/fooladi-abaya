@@ -1,0 +1,1 @@
+{% extends 'store_base.html' %}{% block content %}<section class="receipt-card"><span class="eyebrow">FOOLADI</span><h1>{{ t('تعذر إكمال الخطوة','Unable to complete this step') }}</h1><p>{{ message }}</p><a class="button" href="{{ url_for('store.catalogue') }}">{{ t('العودة للمجموعة','Back to collection') }}</a></section>{% endblock %}
